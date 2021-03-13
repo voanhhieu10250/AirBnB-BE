@@ -8,30 +8,12 @@ const addressSchema = new mongoose.Schema({
 });
 
 const rulesSchema = new mongoose.Schema({
-  checkInTime: {
-    type: Date,
-    required: true,
-  },
-  checkOutTime: {
-    type: Date,
-    required: true,
-  },
-  petsAllowed: {
-    type: Boolean,
-    default: false,
-  },
-  smokingAllowed: {
-    type: Boolean,
-    default: false,
-  },
-  partiesAllowed: {
-    type: Boolean,
-    default: false,
-  },
-  longTermStays: {
-    type: Boolean,
-    default: false,
-  },
+  checkInTime: { type: Date, required: true },
+  checkOutTime: { type: Date, required: true },
+  petsAllowed: { type: Boolean, default: false },
+  smokingAllowed: { type: Boolean, default: false },
+  partiesAllowed: { type: Boolean, default: false },
+  longTermStays: { type: Boolean, default: false },
 });
 
 const propertySchema = new mongoose.Schema(
@@ -53,9 +35,9 @@ const propertySchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
-    guests: {
+    guestsMax: {
       type: Number,
-      default: 1,
+      required: true,
     },
     address: addressSchema,
     description: {
@@ -74,7 +56,7 @@ const propertySchema = new mongoose.Schema(
     },
     serviceFee: {
       type: Number,
-      default: 0,
+      default: null,
     },
     listOfReservation: {
       type: [mongoose.Schema.Types.ObjectId],
@@ -86,6 +68,8 @@ const propertySchema = new mongoose.Schema(
       ref: "Review",
       default: [],
     },
+    longitude: { type: Number, default: null },
+    latitude: { type: Number, default: null },
   },
   { timestamps: true }
 );
