@@ -41,7 +41,7 @@ const roomSchema = new mongoose.Schema(
       type: Number,
       require: true,
     },
-    danhSachNgayDuocBook: {
+    danhSachNgayDaCoKhach: {
       type: [Date],
       default: [],
     },
