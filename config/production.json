@@ -1,0 +1,6 @@
+{
+  "dbUrl": "mongodb+srv://voanhhieu10250:airbnb123456@cluster0.omc5r.mongodb.net/airbnbclone?retryWrites=true&w=majority",
+  "port": 3000,
+  "jwtSignature": "airbnbclonejwt",
+  "hostUrl": "localhost:3000"
+}
