@@ -1,21 +1,23 @@
-const checkFilled = require("../Helpers/checkFilled");
+const checkKeyValue = require("../Helpers/checkKeyValue");
 const devError = require("../Helpers/devError");
 const generateMessage = require("../Helpers/generateMessage");
 const User = require("../models/user");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const config = require("config");
+const isKeysTypeCorrect = require("../Helpers/isKeysTypeCorrect");
 
 const jwtSignature = config.get("jwtSignature");
 
 const userSignUp = async (req, res) => {
   const { username, password, name, email, phone } = req.body;
   try {
-    // for (const item in (obj = { username, password, email })) {
-    //   if (!obj[item])
-    //     return res.status(400).send({ message: `Vui lòng nhập ${item}` });
-    // }
-    const emptyKeys = checkFilled({ username, password, email });
+    if (
+      !isKeysTypeCorrect("string", { username, password, name, email, phone })
+    )
+      return generateMessage("Dữ liệu truyền vào không đúng định dạng.", res);
+
+    const emptyKeys = checkKeyValue({ username, password, email });
     if (emptyKeys.length > 0)
       return generateMessage(`Vui lòng nhập ${emptyKeys[0]}`, res);
 
@@ -54,7 +56,12 @@ const userSignUp = async (req, res) => {
 const adminSignUp = async (req, res) => {
   const { username, password, name, email, phone } = req.body;
   try {
-    const emptyKeys = checkFilled({ username, password, email });
+    if (
+      !isKeysTypeCorrect("string", { username, password, name, email, phone })
+    )
+      return generateMessage("Dữ liệu truyền vào không đúng định dạng.", res);
+
+    const emptyKeys = checkKeyValue({ username, password, email });
     if (emptyKeys.length > 0)
       return generateMessage(`Vui lòng nhập ${emptyKeys[0]}.`, res);
 
@@ -97,6 +104,9 @@ const signIn = async (req, res) => {
   try {
     if (!username || !password)
       return generateMessage("Vui lòng nhập đầy đủ thông tin.", res);
+    if (!isKeysTypeCorrect("string", { username, password }))
+      return generateMessage("Dữ liệu truyền vào không đúng định dạng.", res);
+
     const foundedUser = await User.findOne({ username });
     if (!foundedUser) return generateMessage("Tài khoản không đúng", res, 401);
 
@@ -111,7 +121,7 @@ const signIn = async (req, res) => {
         username: foundedUser.username,
       },
       jwtSignature,
-      { expiresIn: 86400 }
+      { expiresIn: 10 }
     );
 
     foundedUser.tokens.push(token);
@@ -122,6 +132,9 @@ const signIn = async (req, res) => {
   }
 };
 
-const userInfo = async (req, res) => {};
+const userInfo = async (req, res) => {
+  const result = req.user.toJSON();
+  return res.send(result);
+};
 
-module.exports = { userSignUp, adminSignUp, signIn };
+module.exports = { userSignUp, adminSignUp, signIn, userInfo };
