@@ -8,7 +8,7 @@ const jwtSignature = config.get("jwtSignature");
 const auth = (roles) => async (req, res, next) => {
   try {
     const token = req.header("Authorization").replace("Bearer ", "");
-    const decoded = await jwt.verify(token, jwtSignature);
+    const decoded = jwt.verify(token, jwtSignature);
 
     const allowRoles = roles || ["QuanTri", "NguoiDung"];
 
@@ -17,6 +17,8 @@ const auth = (roles) => async (req, res, next) => {
       tokens: token,
       role: { $in: allowRoles },
     });
+
+    if (!foundedUser) return generateMessage("Bạn không có quyền truy cập");
   } catch (error) {
     generateMessage("Bạn không có quyền truy cập.", res, 401);
   }
