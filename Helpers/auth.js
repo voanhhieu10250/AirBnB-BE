@@ -11,7 +11,7 @@ const auth = (roles) => async (req, res, next) => {
   try {
     const token = req.header("Authorization").replace("Bearer ", "");
     const decoded = jwt.verify(token, jwtSignature);
-    console.log("Chay qua day");
+
     const emptyKeys = checkKeyValue({
       _id: decoded._id,
       username: decoded.username,
@@ -38,12 +38,19 @@ const auth = (roles) => async (req, res, next) => {
 
     next();
   } catch (error) {
-    // return generateMessage(
-    //   "Bạn không có quyền thực hiện chức năng này",
-    //   res,
-    //   401
-    // );
-    // devError()
+    if (error.message === "jwt expired")
+      return generateMessage(
+        "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại",
+        res
+      );
+    else if (error.message === "jwt malformed")
+      return generateMessage(
+        "Cảnh cáo! Bạn không có quyền thực hiện chức năng này.",
+        res,
+        403,
+        { error }
+      );
+    return devError(error, res);
   }
 };
 

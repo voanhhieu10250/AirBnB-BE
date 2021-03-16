@@ -114,14 +114,14 @@ const signIn = async (req, res) => {
     if (!isMatch) return generateMessage("Mật khẩu không đúng", res, 401);
 
     //generate token
-    const token = await jwt.sign(
+    const token = jwt.sign(
       {
         _id: foundedUser._id,
         role: foundedUser.role,
         username: foundedUser.username,
       },
       jwtSignature,
-      { expiresIn: 10 }
+      { expiresIn: 84600 }
     );
 
     foundedUser.tokens.push(token);
