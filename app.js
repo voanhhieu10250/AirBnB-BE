@@ -8,7 +8,7 @@ const {
   signIn,
   userInfo,
 } = require("./controllers/auth");
-const { auth } = require("./Helpers/auth");
+const { auth } = require("./middleware/auth");
 
 const app = express();
 const port = process.env.PORT || config.get("port");

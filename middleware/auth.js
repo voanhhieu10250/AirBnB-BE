@@ -1,15 +1,15 @@
 const jwt = require("jsonwebtoken");
 const config = require("config");
 const User = require("../models/user");
-const generateMessage = require("./generateMessage");
-const checkKeyValue = require("./checkKeyValue");
-const devError = require("./devError");
+const generateMessage = require("../Helpers/generateMessage");
+const checkKeyValue = require("../Helpers/checkKeyValue");
+const devError = require("../Helpers/devError");
 
 const jwtSignature = config.get("jwtSignature");
 
 const auth = (roles) => async (req, res, next) => {
   try {
-    const token = req.header("Authorization").replace("Bearer ", "");
+    const token = req.header("Authorization").split(" ")[1];
     const decoded = jwt.verify(token, jwtSignature);
 
     const emptyKeys = checkKeyValue({
@@ -45,7 +45,7 @@ const auth = (roles) => async (req, res, next) => {
       );
     else if (error.message === "jwt malformed")
       return generateMessage(
-        "Cảnh cáo! Bạn không có quyền thực hiện chức năng này.",
+        "Bạn không có quyền thực hiện chức năng này.",
         res,
         403,
         { error }
