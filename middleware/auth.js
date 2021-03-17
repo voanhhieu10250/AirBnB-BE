@@ -9,7 +9,9 @@ const jwtSignature = config.get("jwtSignature");
 
 const auth = (roles) => async (req, res, next) => {
   try {
-    const token = req.header("Authorization").split(" ")[1];
+    if (!req.headers.authorization)
+      return generateMessage("Lỗi xác thực", res, 401);
+    const token = req.header("Authorization").replace("Bearer ", "");
     const decoded = jwt.verify(token, jwtSignature);
 
     const emptyKeys = checkKeyValue({
@@ -17,7 +19,8 @@ const auth = (roles) => async (req, res, next) => {
       username: decoded.username,
       role: decoded.role,
     });
-    if (emptyKeys.length > 0) return generateMessage("Dữ liệu không hợp lệ");
+    if (emptyKeys.length > 0)
+      return generateMessage("Dữ liệu không hợp lệ", res);
 
     const allowRoles = roles || ["QuanTri", "NguoiDung"];
 

@@ -2,30 +2,26 @@ require("./db/connect");
 const express = require("express");
 const config = require("config");
 const bodyParser = require("body-parser");
-const {
-  userSignUp,
-  adminSignUp,
-  signIn,
-  userInfo,
-} = require("./controllers/auth");
-const { auth } = require("./middleware/auth");
+const userRouter = require("./routers/user");
+const uploadRouter = require("./routers/upload");
+const path = require("path");
+const cors = require("cors");
+
+//------------------------------------------------------
 
 const app = express();
 const port = process.env.PORT || config.get("port");
 
+app.use(cors());
+
 app.use(bodyParser.json());
 
-app.post("/QuanLyNguoiDung/DangKy", userSignUp);
+const imagesFolderPath = path.join(__dirname, "images");
+app.use("/image", express.static(imagesFolderPath));
 
-app.post(
-  "/QuanLyNguoiDung/DangKyNguoiDungQuanTri",
-  auth(["QuanTri"]),
-  adminSignUp
-);
+app.use(userRouter);
 
-app.post("/QuanLyNguoiDung/DangNhap", signIn);
-
-app.get("/QuanLyNguoiDung/ThongTinTaiKhoan", auth(), userInfo);
+app.use(uploadRouter);
 
 app.listen(port, () => {
   console.log("listening...");
