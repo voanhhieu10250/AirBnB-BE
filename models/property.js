@@ -1,19 +1,46 @@
 const mongoose = require("mongoose");
 const { utilitySchema } = require("./utility");
 
-const addressSchema = new mongoose.Schema({
-  city: { type: String, required: true },
-  province: { type: String, default: null },
-  street: { type: String, default: null },
-});
-
 const rulesSchema = new mongoose.Schema({
-  checkInTime: { type: Date, required: true },
-  checkOutTime: { type: Date, required: true },
   petsAllowed: { type: Boolean, default: false },
   smokingAllowed: { type: Boolean, default: false },
   partiesAllowed: { type: Boolean, default: false },
-  longTermStays: { type: Boolean, default: false },
+  longTermStays: { type: Boolean, default: true },
+  suitableForChildren: { type: Boolean, default: true },
+  customRules: {
+    type: [String],
+    default: [],
+  },
+});
+
+const detailSchema = new mongoose.Schema({
+  stairsDetail: { type: String, default: null },
+  noiseDetail: { type: String, default: null },
+  petInTheHouse: { type: String, default: null },
+  parkingSpaceDetail: { type: String, default: null },
+  sharedSpace: { type: String, default: null },
+  camerasDetail: { type: String, default: null },
+});
+
+const requireSchema = new mongoose.Schema({
+  checkInTime: {
+    type: Object,
+    default: {
+      from: "3PM",
+      to: "5PM",
+    },
+  },
+  checkOutTime: { type: String, default: "1PM" },
+  stayDays: {
+    type: Object,
+    default: {
+      min: 0,
+      max: 0,
+    },
+  },
+  identificationPapers: { type: Boolean, default: false },
+  hasNoBadReview: { type: Boolean, default: false },
+  customRequire: { type: [String], default: [] },
 });
 
 const propertySchema = new mongoose.Schema(
@@ -23,41 +50,22 @@ const propertySchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    propertyType: {
-      type: String,
-      default: "ToanBoNha",
-    },
-    bedrooms: {
-      type: Number,
-      default: null,
-    },
-    bathrooms: {
-      type: Number,
-      default: null,
-    },
-    guestsMax: {
-      type: Number,
-      required: true,
-    },
-    address: addressSchema,
-    description: {
-      type: String,
-      default: null,
-    },
-    images: {
-      type: [String],
-      default: [],
-    },
-    utilities: { type: utilitySchema, default: null },
+    rentalType: { type: String, default: "ToanBoNha" },
+    bedrooms: { type: Number, default: 1 },
+    bathrooms: { type: Number, default: 1 },
+    amountOfGuest: { type: Number, default: 1 },
+    address: { type: String, required: true },
+    title: { type: String, required: true },
+    description: { type: String, default: null },
+    images: { type: [String], default: [] },
+    utilities: utilitySchema,
     rules: rulesSchema,
-    pricePerDay: {
-      type: Number,
-      require: true,
-    },
-    serviceFee: {
-      type: Number,
-      default: null,
-    },
+    requireForBooker: requireSchema,
+    moreDetails: detailSchema,
+    pricePerDay: { type: Number, required: true },
+    serviceFee: { type: Number, default: null },
+    longitude: { type: Number, default: null },
+    latitude: { type: Number, default: null },
     listOfReservation: {
       type: [mongoose.Schema.Types.ObjectId],
       ref: "Reservation",
@@ -68,12 +76,23 @@ const propertySchema = new mongoose.Schema(
       ref: "Review",
       default: [],
     },
-    longitude: { type: Number, default: null },
-    latitude: { type: Number, default: null },
   },
   { timestamps: true }
 );
 
-const Property = mongoose.model("Property", propertySchema);
+propertySchema.methods.toJSON = function () {
+  const property = this.toObject();
+  delete property._id;
+  delete property.requireForBooker._id;
+  delete property.utilities._id;
+  delete property.rules._id;
+  delete property.moreDetails._id;
+  return property;
+};
 
-module.exports = Property;
+const Property = mongoose.model("Property", propertySchema);
+const Require = mongoose.model("Require", requireSchema);
+const Detail = mongoose.model("Detail", detailSchema);
+const Rule = mongoose.model("Rule", rulesSchema);
+
+module.exports = { Property, Require, Detail, Rule };

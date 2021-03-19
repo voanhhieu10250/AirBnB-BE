@@ -4,6 +4,7 @@ const config = require("config");
 const bodyParser = require("body-parser");
 const userRouter = require("./routers/user");
 const uploadRouter = require("./routers/upload");
+const propertyRouter = require("./routers/property");
 const path = require("path");
 const cors = require("cors");
 
@@ -22,6 +23,8 @@ app.use("/image", express.static(imagesFolderPath));
 app.use(userRouter);
 
 app.use(uploadRouter);
+
+app.use(propertyRouter);
 
 app.listen(port, () => {
   console.log("listening...");
