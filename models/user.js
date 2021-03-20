@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
+    group: { type: String, default: "gp01" },
     username: { type: String, required: true },
     password: { type: String, required: true },
     email: { type: String, required: true },
@@ -44,11 +45,12 @@ userSchema.methods.toJSON = function () {
   return user;
 };
 
-// userSchema.pre("save", async function (next) {
-//   if (this.isModified("password"))
-//     this.password = await bcrypt.hash(this.password, 7);
-//   next();
-// });
+userSchema.pre("save", async function (next) {
+  // if (this.isModified("password"))
+  //   this.password = await bcrypt.hash(this.password, 7);
+  this.group = this.group.toLowerCase();
+  next();
+});
 
 const User = mongoose.model("User", userSchema);
 

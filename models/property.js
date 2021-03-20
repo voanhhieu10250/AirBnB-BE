@@ -45,6 +45,7 @@ const requireSchema = new mongoose.Schema({
 
 const propertySchema = new mongoose.Schema(
   {
+    group: { type: String, default: "gp01" },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -89,6 +90,11 @@ propertySchema.methods.toJSON = function () {
   delete property.moreDetails._id;
   return property;
 };
+
+propertySchema.pre("save", async function (next) {
+  this.group = this.group.toLowerCase();
+  next();
+});
 
 const Property = mongoose.model("Property", propertySchema);
 const Require = mongoose.model("Require", requireSchema);

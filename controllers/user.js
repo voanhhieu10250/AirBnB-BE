@@ -6,6 +6,7 @@ const User = require("../models/user");
 const jwt = require("jsonwebtoken");
 const config = require("config");
 const isKeysTypeCorrect = require("../Helpers/isKeysTypeCorrect");
+const isValidGroup = require("../Helpers/validateGroup");
 
 // -------------------------------------------------------------
 
@@ -13,18 +14,28 @@ const jwtSignature = config.get("jwtSignature");
 const tokenLiveTime = config.get("tokenLifeTime");
 
 const userSignUp = async (req, res) => {
-  const { username, password, name, email, phone } = req.body;
+  const { username, password, name, email, phone, group } = req.body;
   try {
+    const emptyKeys = checkKeyValue({ username, password, email, group });
+    if (emptyKeys.length > 0)
+      return generateMessage(`Vui lòng nhập ${emptyKeys[0]}`, res);
     if (
-      !isKeysTypeCorrect("string", { username, password, name, email, phone })
+      !isKeysTypeCorrect("string", {
+        username,
+        password,
+        name,
+        email,
+        phone,
+        group,
+      })
     )
       return generateMessage("Dữ liệu truyền vào không đúng định dạng.", res);
 
-    const emptyKeys = checkKeyValue({ username, password, email });
-    if (emptyKeys.length > 0)
-      return generateMessage(`Vui lòng nhập ${emptyKeys[0]}`, res);
-
-    const foundedUser = await User.findOne().or([{ username }, { email }]);
+    if (!isValidGroup(group)) return generateMessage("Group không hợp lệ", res);
+    const foundedUser = await User.findOne().or([
+      { username, group },
+      { email, group },
+    ]);
     if (foundedUser)
       return res
         .status(400)
@@ -40,6 +51,7 @@ const userSignUp = async (req, res) => {
       name: name ? name : username,
       phone,
       role: "NguoiDung",
+      group,
     });
     const result = await newUser.save();
 
@@ -50,6 +62,7 @@ const userSignUp = async (req, res) => {
       name: result.name,
       role: result.role,
       phone: result.phone,
+      group: result.group,
     });
   } catch (err) {
     devError(err, res);
