@@ -1,10 +1,10 @@
 // Hàm kiểm tra và trả về list các key có value rỗng (kể cả các key có value là Array
 //rỗng hoặc Object rỗng) bên trong obj
 
-const checkKeyValue = (obj) => {
+const getEmptyKeys = (obj) => {
   const listEmptyKeys = [];
   for (const item in obj) {
-    if (!obj[item]) {
+    if (!obj[item] && obj[item] !== 0) {
       listEmptyKeys.push(item);
     } else if (Array.isArray(obj[item]) && obj[item].length === 0) {
       listEmptyKeys.push(item);
@@ -18,4 +18,4 @@ const checkKeyValue = (obj) => {
   return listEmptyKeys;
 };
 
-module.exports = checkKeyValue;
+module.exports = getEmptyKeys;

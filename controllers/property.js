@@ -1,13 +1,13 @@
-const checkKeyValue = require("../Helpers/checkKeyValue");
+const getEmptyKeys = require("../Helpers/getEmptyKeys");
 const devError = require("../Helpers/devError");
 const generateMessage = require("../Helpers/generateMessage");
-const { Property, Rule, Require, Detail } = require("../models/property");
-const User = require("../models/user");
-const { Utility } = require("../models/utility");
+const { Property } = require("../models/property");
+const isKeysTypeCorrect = require("../Helpers/isKeysTypeCorrect");
 
 const createRentalProperty = async (req, res) => {
   const {
     address,
+    cityCode,
     rentalType,
     amountOfGuest,
     pricePerDay,
@@ -20,7 +20,7 @@ const createRentalProperty = async (req, res) => {
   } = req.body;
 
   try {
-    const emptyKeys = checkKeyValue({
+    const emptyKeys = getEmptyKeys({
       address,
       pricePerDay,
       title,
@@ -28,40 +28,54 @@ const createRentalProperty = async (req, res) => {
     });
     if (emptyKeys.length > 0)
       return generateMessage(`${emptyKeys[0]} không được trống`, res);
+    if (
+      !isKeysTypeCorrect("string", {
+        address,
+        cityCode,
+        rentalType,
+        title,
+        description,
+      }) ||
+      !isKeysTypeCorrect("number", {
+        amountOfGuest,
+        pricePerDay,
+        bedrooms,
+        bathrooms,
+        longitude,
+        latitude,
+      })
+    )
+      return generateMessage("Dữ liệu không hợp lệ", res);
     const newProperty = new Property({
       owner: req.user._id,
+      group: req.user.group,
       address,
+      cityCode,
       pricePerDay,
       title,
       description,
-      rentalType: rentalType || undefined,
-      amountOfGuest: amountOfGuest || undefined,
-      bedrooms: bedrooms || undefined,
-      bathrooms: bathrooms || undefined,
-      longitude: longitude || undefined,
-      latitude: latitude || undefined,
-      utilities: new Utility(),
-      rules: new Rule(),
-      requireForBooker: new Require(),
-      moreDetails: new Detail(),
+      rentalType,
+      amountOfGuest,
+      bedrooms,
+      bathrooms,
+      coordinates: {
+        longitude,
+        latitude,
+      },
     });
     let result = await newProperty.save();
-    const host = await User.findById(req.user._id);
-    host.hostedList.push(result._id);
-    await host.save();
-    // result = result.toObject();
-    // delete result.requireForBooker._id;
-    // delete result.utilities._id;
-    // delete result.rules._id;
-    // delete result.moreDetails._id;
-    result.owner = {
-      username: host.username,
-      email: host.email,
-      name: host.name,
-    };
-    return res.send(result);
+    req.user.hostedList.push(result._id);
+    await req.user.save();
+    result = result.toJSON();
+    return res.send({
+      ...result,
+      owner: {
+        username: req.user.username,
+        email: req.user.email,
+        name: req.user.name,
+      },
+    });
   } catch (error) {
-    console.log(error);
     devError(error, res);
   }
 };

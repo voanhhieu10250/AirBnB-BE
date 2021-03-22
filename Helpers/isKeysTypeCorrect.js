@@ -1,24 +1,42 @@
 // Hàm check xem dữ liệu truyền vào có đúng với type quy định hay không. Nếu đúng thì
 //return true, nếu có bất kì key nào bị khác type thì trả về false
 
-// types: string, number, boolean, object, array
+// types: string, number, boolean, object, array, null
 
-const isKeysTypeCorrect = (keyType, object) => {
+const isKeysTypeCorrect = (keyType, object, strictModeForEmptyKey = false) => {
   let allValid = true;
   if (typeof keyType === "string") {
     for (const item in object) {
-      if (typeof object[item] !== keyType) {
+      if (object[item] === undefined && !strictModeForEmptyKey) continue;
+      if (
+        (Number(object[item]) && keyType === "number") ||
+        Number(object[item]) === 0
+      )
+        continue;
+      if (
+        (object[item] === null && keyType !== "null") ||
+        typeof object[item] !== keyType
+      ) {
         allValid = false;
+        console.log(`Type error at keyType "${keyType}" for ${item}`);
         break;
       }
     }
   } else {
     for (const item in keyType) {
+      if (object[item] === undefined && !strictModeForEmptyKey) continue;
       if (
+        (Number(object[item]) && keyType[item] === "number") ||
+        Number(object[item]) === 0
+      )
+        continue;
+      if (
+        (object[item] === null && keyType[item] !== "null") ||
         (Array.isArray(object[item]) && keyType[item] !== "array") ||
         typeof object[item] !== keyType[item]
       ) {
         allValid = false;
+        console.log(`Type error at keyType "${keyType[item]}" for ${item}`);
         break;
       }
     }

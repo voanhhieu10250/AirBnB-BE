@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const config = require("config");
 const User = require("../models/user");
 const generateMessage = require("../Helpers/generateMessage");
-const checkKeyValue = require("../Helpers/checkKeyValue");
+const getEmptyKeys = require("../Helpers/getEmptyKeys");
 const devError = require("../Helpers/devError");
 
 const jwtSignature = config.get("jwtSignature");
@@ -14,7 +14,7 @@ const auth = (roles) => async (req, res, next) => {
     const token = req.header("Authorization").replace("Bearer ", "");
     const decoded = jwt.verify(token, jwtSignature);
 
-    const emptyKeys = checkKeyValue({
+    const emptyKeys = getEmptyKeys({
       _id: decoded._id,
       username: decoded.username,
       role: decoded.role,

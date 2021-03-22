@@ -1,4 +1,4 @@
-const checkKeyValue = require("../Helpers/checkKeyValue");
+const getEmptyKeys = require("../Helpers/getEmptyKeys");
 const devError = require("../Helpers/devError");
 const generateMessage = require("../Helpers/generateMessage");
 const User = require("../models/user");
@@ -16,7 +16,7 @@ const tokenLiveTime = config.get("tokenLifeTime");
 const userSignUp = async (req, res) => {
   const { username, password, name, email, phone, group } = req.body;
   try {
-    const emptyKeys = checkKeyValue({ username, password, email, group });
+    const emptyKeys = getEmptyKeys({ username, password, email, group });
     if (emptyKeys.length > 0)
       return generateMessage(`Vui lòng nhập ${emptyKeys[0]}`, res);
     if (
@@ -77,7 +77,7 @@ const adminSignUp = async (req, res) => {
     )
       return generateMessage("Dữ liệu truyền vào không đúng định dạng.", res);
 
-    const emptyKeys = checkKeyValue({ username, password, email });
+    const emptyKeys = getEmptyKeys({ username, password, email });
     if (emptyKeys.length > 0)
       return generateMessage(`Vui lòng nhập ${emptyKeys[0]}.`, res);
 
