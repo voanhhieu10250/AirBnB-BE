@@ -7,6 +7,8 @@ const jwt = require("jsonwebtoken");
 const config = require("config");
 const isKeysTypeCorrect = require("../Helpers/isKeysTypeCorrect");
 const isValidGroup = require("../Helpers/validateGroup");
+const { vietnameseRegexStr } = require("../Helpers/convertVietnameseStr");
+const { Property } = require("../models/property");
 
 // -------------------------------------------------------------
 
@@ -32,7 +34,10 @@ const userSignUp = async (req, res) => {
       return generateMessage("Dữ liệu truyền vào không đúng định dạng.", res);
 
     if (!isValidGroup(group)) return generateMessage("Group không hợp lệ", res);
-    const foundedUser = await User.findOne().or([{ username }, { email }]);
+    const foundedUser = await User.findOne().or([
+      { username, isActive: true },
+      { email, isActive: true },
+    ]);
     if (foundedUser)
       return res
         .status(400)
@@ -78,7 +83,10 @@ const adminSignUp = async (req, res) => {
     if (emptyKeys.length > 0)
       return generateMessage(`Vui lòng nhập ${emptyKeys[0]}.`, res);
 
-    const foundedUser = await User.findOne().or([{ username }, { email }]);
+    const foundedUser = await User.findOne().or([
+      { username, isActive: true },
+      { email, isActive: true },
+    ]);
     if (foundedUser)
       return generateMessage(
         "Username hoặc email đã tồn tại. Vui lòng thử lại.",
@@ -120,7 +128,7 @@ const signIn = async (req, res) => {
     if (!isKeysTypeCorrect("string", { username, password }))
       return generateMessage("Dữ liệu truyền vào không đúng định dạng.", res);
 
-    const foundedUser = await User.findOne({ username });
+    const foundedUser = await User.findOne({ username, isActive: true });
     if (!foundedUser) return generateMessage("Tài khoản không đúng", res, 401);
 
     // const isMatch = await bcrypt.compare(password, foundedUser.password);
@@ -155,15 +163,16 @@ const signIn = async (req, res) => {
 };
 
 const userInfo = async (req, res) => {
-  // const result = req.user;
-  // return res.send(result);
-
   const { username } = req.query;
   try {
-    const foundedUser = await User.findOne({ username }).populate(
+    const foundedUser = await User.findOne({
+      username,
+      isActive: true,
+    }).populate(
       "hostedList bookedList reviews wishList",
       "reviewer rating comment booker property startDate endDate totalPrice username propertyType reviews longitude latitude"
     );
+    if (!foundedUser) return generateMessage("Người dùng không tồn tại", res);
     res.send(foundedUser);
   } catch (error) {
     devError(error, res);
@@ -203,36 +212,51 @@ const getListRolesOfUser = async (req, res) => {
 };
 
 const getAllUser = async (req, res) => {
-  const { keyWord } = req.query;
-  let regex = new RegExp(keyWord, "i");
-  const users = await User.find().or([
-    { username: { $regex: regex } },
-    { name: { $regex: regex } },
-    { email: { $regex: regex } },
-  ]);
-  res.send(users);
+  let { keyWord } = req.query;
+  if (keyWord) {
+    const regex = vietnameseRegexStr(keyWord);
+    const users = await User.find({ isActive: true }).or([
+      { username: { $regex: regex } },
+      { name: { $regex: regex } },
+      { email: { $regex: regex } },
+    ]);
+    res.send(users);
+  } else {
+    const users = await User.find({ isActive: true });
+    res.send(users);
+  }
 };
 
 const getUsersPerPage = async (req, res) => {
-  const { keyWord, currentPage = 1, pageSize = 20 } = req.query;
-  let regex = new RegExp(keyWord, "i");
+  let { keyWord, currentPage = 1, pageSize = 20 } = req.query;
+  currentPage = Number(currentPage);
+  pageSize = Number(pageSize);
+  let listUser = null;
+  let totalCount = null;
+  if (keyWord) {
+    const regex = vietnameseRegexStr(keyWord);
+    listUser = await User.find({ isActive: true })
+      .or([
+        { username: { $regex: regex } },
+        { name: { $regex: regex } },
+        { email: { $regex: regex } },
+      ])
+      .skip((currentPage - 1) * pageSize)
+      .limit(pageSize);
+    totalCount = await User.find({ isActive: true })
+      .or([
+        { username: { $regex: regex } },
+        { name: { $regex: regex } },
+        { email: { $regex: regex } },
+      ])
+      .count();
+  } else {
+    listUser = await User.find({ isActive: true })
+      .skip((currentPage - 1) * pageSize)
+      .limit(pageSize);
 
-  const listUser = await User.find()
-    .or([
-      { username: { $regex: regex } },
-      { name: { $regex: regex } },
-      { email: { $regex: regex } },
-    ])
-    .skip((currentPage - 1) * pageSize)
-    .limit(pageSize);
-
-  const totalCount = await User.find()
-    .or([
-      { username: { $regex: regex } },
-      { name: { $regex: regex } },
-      { email: { $regex: regex } },
-    ])
-    .count();
+    totalCount = await User.find({ isActive: true }).count();
+  }
 
   const totalPages =
     listUser.length < pageSize ? 1 : Math.ceil(listUser.length / pageSize);
@@ -250,7 +274,7 @@ const updateUser = async (req, res) => {
   const { phone, name, description, email, password } = req.body;
   try {
     if (email) {
-      const foundedEmail = await User.findOne({ email });
+      const foundedEmail = await User.findOne({ email, isActive: true });
       if (foundedEmail) return generateMessage("Email đã tồn tại", res);
     }
     req.user.phone = phone || req.user.phone;
@@ -267,10 +291,15 @@ const updateUser = async (req, res) => {
 
 const deleteUser = async (req, res) => {
   const { username } = req.query;
-  console.log("username", username);
   if (!username) return generateMessage("Username?", res);
   else if (username === req.user.username || req.user.role === "QuanTri") {
-    await User.findOneAndRemove({ username });
+    const user = await User.findOne({ username, isActive: true });
+    if (!user) return generateMessage("Người dùng không tồn tại", res);
+    user.isActive = false;
+    await user.save();
+    await user.hostedList.forEach(async (property) => {
+      await Property.findByIdAndUpdate(property, { isActive: false });
+    });
     return res.send({ message: "Xóa thành công" });
   } else
     return generateMessage("Bạn không có quyền thực hiện chức năng này", res);

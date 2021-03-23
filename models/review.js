@@ -7,8 +7,11 @@ const reviewSchema = new mongoose.Schema(
       ref: "User",
     },
     rating: {
-      type: Number,
-      default: null,
+      cleanliness: { type: Number, default: 0 },
+      accuracy: { type: Number, default: 0 },
+      communication: { type: Number, default: 0 },
+      location: { type: Number, default: 0 },
+      checkIn: { type: Number, default: 0 },
     },
     comment: {
       type: String,

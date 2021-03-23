@@ -28,6 +28,7 @@ const auth = (roles) => async (req, res, next) => {
       _id: decoded._id,
       tokens: token,
       role: { $in: allowRoles },
+      isActive: true,
     });
     if (!foundedUser)
       return generateMessage(

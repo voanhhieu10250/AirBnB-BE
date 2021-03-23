@@ -33,6 +33,10 @@ const userSchema = new mongoose.Schema(
       ref: "Property",
       default: [],
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );
@@ -42,6 +46,7 @@ userSchema.methods.toJSON = function () {
   delete user._id;
   // delete user.password;
   delete user.tokens;
+  delete user.isActive;
   return user;
 };
 

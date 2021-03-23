@@ -10,23 +10,35 @@ const propertySchema = new mongoose.Schema(
       required: true,
     },
     rentalType: { type: String, default: "PhongRieng" },
-    bedrooms: { type: Number, default: 1 },
-    bathrooms: { type: Number, default: 1 },
+    roomsAndBeds: {
+      beds: { type: Number, default: 1 },
+      bedrooms: { type: Number, default: 1 },
+      bathrooms: { type: Number, default: 1 },
+    },
     amountOfGuest: { type: Number, default: 1 },
     address: { type: String, required: true },
     title: { type: String, required: true },
     description: { type: String, default: null },
     images: { type: [String], default: [] },
-    utilities: {
-      hasTV: { type: Boolean, default: false },
-      hasKitchen: { type: Boolean, default: false },
-      hasAirConditioning: { type: Boolean, default: false },
-      hasInternet: { type: Boolean, default: false },
-      hasSwimmingPool: { type: Boolean, default: false },
-      hasFreeParking: { type: Boolean, default: false },
-      hasWasher: { type: Boolean, default: false },
-      hasMicrowave: { type: Boolean, default: false },
-      hasRefrigerator: { type: Boolean, default: false },
+    amenities: {
+      TV: { type: Boolean, default: false },
+      kitchen: { type: Boolean, default: false },
+      airConditioning: { type: Boolean, default: false },
+      wifi: { type: Boolean, default: false },
+      swimmingPool: { type: Boolean, default: false },
+      washer: { type: Boolean, default: false },
+      microwave: { type: Boolean, default: false },
+      refrigerator: { type: Boolean, default: false },
+      selfCheckIn: { type: Boolean, default: false },
+      smokeAlarm: { type: Boolean, default: false },
+      hangers: { type: Boolean, default: false },
+      dryer: { type: Boolean, default: false },
+    },
+    facilities: {
+      hotTub: { type: Boolean, default: false },
+      gym: { type: Boolean, default: false },
+      pool: { type: Boolean, default: false },
+      freeParking: { type: Boolean, default: false },
     },
     rules: {
       petsAllowed: { type: Boolean, default: false },
@@ -60,19 +72,33 @@ const propertySchema = new mongoose.Schema(
     },
     pricePerDay: { type: Number, required: true },
     serviceFee: { type: Number, default: null },
-    coordinates: {
-      longitude: { type: Number, default: null },
-      latitude: { type: Number, default: null },
+    coords: {
+      lng: { type: Number, default: null },
+      lat: { type: Number, default: null },
     },
     listOfReservation: {
       type: [mongoose.Schema.Types.ObjectId],
       ref: "Reservation",
       default: [],
     },
-    reviews: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "Review",
-      default: [],
+    rating: {
+      scores: {
+        final: { type: Number, default: 0 },
+        cleanliness: { type: Number, default: 0 },
+        accuracy: { type: Number, default: 0 },
+        communication: { type: Number, default: 0 },
+        location: { type: Number, default: 0 },
+        checkIn: { type: Number, default: 0 },
+      },
+      reviews: {
+        type: [mongoose.Schema.Types.ObjectId],
+        ref: "Review",
+        default: [],
+      },
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   { timestamps: true }
@@ -80,7 +106,7 @@ const propertySchema = new mongoose.Schema(
 
 propertySchema.methods.toJSON = function () {
   const property = this.toObject();
-  delete property._id;
+  delete property.isActive;
   return property;
 };
 

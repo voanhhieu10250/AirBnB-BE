@@ -3,6 +3,7 @@ const devError = require("../Helpers/devError");
 const generateMessage = require("../Helpers/generateMessage");
 const { Property } = require("../models/property");
 const isKeysTypeCorrect = require("../Helpers/isKeysTypeCorrect");
+const User = require("../models/user");
 
 const createRentalProperty = async (req, res) => {
   const {
@@ -80,6 +81,47 @@ const createRentalProperty = async (req, res) => {
   }
 };
 
+const getPropertyInfo = async (req, res) => {
+  const { id } = req.query;
+  try {
+    if (!id) return generateMessage("Id không hợp lệ");
+    const property = await Property.findOne({
+      _id: id,
+      isActive: true,
+    }).populate("listOfReservation reviews");
+    if (!property) return generateMessage("Property không tồn tại", res);
+    let propertyOwner = await User.findOne({
+      _id: property.owner,
+      isActive: true,
+    });
+    if (!propertyOwner) return generateMessage("Owner no longer exists");
+    propertyOwner = propertyOwner.toJSON();
+    delete propertyOwner.wishList;
+    delete propertyOwner.bookedList;
+    delete propertyOwner.hostedList;
+    delete propertyOwner.role;
+    delete propertyOwner.createdAt;
+    delete propertyOwner.updatedAt;
+    delete propertyOwner.description;
+    delete propertyOwner.password;
+    delete propertyOwner.group;
+    return res.send({
+      ...property._doc,
+      owner: propertyOwner,
+    });
+  } catch (error) {}
+};
+
+const updateProperty = async (req, res) => {};
+
+const deleteProperty = async (req, res) => {};
+
+const getListProperty = async (req, res) => {};
+
 module.exports = {
   createRentalProperty,
+  getPropertyInfo,
+  updateProperty,
+  deleteProperty,
+  getListProperty,
 };

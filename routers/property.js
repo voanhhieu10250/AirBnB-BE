@@ -1,9 +1,14 @@
 const express = require("express");
-const { createRentalProperty } = require("../controllers/property");
+const {
+  createRentalProperty,
+  getPropertyInfo,
+} = require("../controllers/property");
 const { auth } = require("../middleware/auth");
 
 const router = express.Router();
 
 router.post("/QuanLyPhong/TaoPhongChoThue", auth(), createRentalProperty);
+
+router.get("/QuanLyPhong/LayThongTinPhong", getPropertyInfo);
 
 module.exports = router;
