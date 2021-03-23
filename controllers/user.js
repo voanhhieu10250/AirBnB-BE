@@ -16,7 +16,7 @@ const tokenLiveTime = config.get("tokenLifeTime");
 const userSignUp = async (req, res) => {
   const { username, password, name, email, phone, group } = req.body;
   try {
-    const emptyKeys = getEmptyKeys({ username, password, email, group });
+    const emptyKeys = getEmptyKeys({ username, password, email });
     if (emptyKeys.length > 0)
       return generateMessage(`Vui lòng nhập ${emptyKeys[0]}`, res);
     if (
@@ -32,10 +32,7 @@ const userSignUp = async (req, res) => {
       return generateMessage("Dữ liệu truyền vào không đúng định dạng.", res);
 
     if (!isValidGroup(group)) return generateMessage("Group không hợp lệ", res);
-    const foundedUser = await User.findOne().or([
-      { username, group },
-      { email, group },
-    ]);
+    const foundedUser = await User.findOne().or([{ username }, { email }]);
     if (foundedUser)
       return res
         .status(400)
@@ -70,7 +67,7 @@ const userSignUp = async (req, res) => {
 };
 
 const adminSignUp = async (req, res) => {
-  const { username, password, name, email, phone } = req.body;
+  const { username, password, name, email, phone, group } = req.body;
   try {
     if (
       !isKeysTypeCorrect("string", { username, password, name, email, phone })
