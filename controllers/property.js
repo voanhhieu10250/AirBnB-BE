@@ -3,6 +3,7 @@ const generateMessage = require("../Helpers/generateMessage");
 const { Property } = require("../models/property");
 const isKeysTypeCorrect = require("../Helpers/isKeysTypeCorrect");
 const User = require("../models/user");
+const isValidGroup = require("../Helpers/validateGroup");
 
 const getListRentalType = (req, res) => {
   res.send([
@@ -34,6 +35,7 @@ const createRentalProperty = async (req, res) => {
     rentalType,
     amountOfGuest,
     pricePerDay,
+    beds,
     bedrooms,
     bathrooms,
     title,
@@ -68,9 +70,12 @@ const createRentalProperty = async (req, res) => {
         bathrooms,
         longitude,
         latitude,
+        beds,
       })
     )
-      return generateMessage("Dữ liệu không hợp lệ", res);
+      return generateMessage("Kiểu dữ liệu không hợp lệ", res);
+    if (group && !isValidGroup(group))
+      return generateMessage("Group không hợp lệ", res);
     const newProperty = new Property({
       owner: req.user._id,
       group: group.toLowerCase() || req.user.group,
@@ -81,11 +86,14 @@ const createRentalProperty = async (req, res) => {
       description,
       rentalType,
       amountOfGuest,
-      bedrooms,
-      bathrooms,
-      coordinates: {
-        longitude,
-        latitude,
+      roomsAndBeds: {
+        beds,
+        bedrooms,
+        bathrooms,
+      },
+      coords: {
+        lng: longitude,
+        lat: latitude,
       },
     });
     let result = await newProperty.save();

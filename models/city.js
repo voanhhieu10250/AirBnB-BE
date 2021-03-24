@@ -9,15 +9,22 @@ const citySchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  keyName: {
+  searchKey: {
     type: String,
     default: null,
   },
-  listAvailableProperties: {
+  listHostedProperties: {
     type: [mongoose.Schema.Types.ObjectId],
     ref: "Property",
+    default: [],
   },
 });
+
+citySchema.methods.toJSON = function () {
+  const city = this.toObject();
+  delete city._id;
+  return city;
+};
 
 const City = mongoose.model("City", citySchema);
 

@@ -1,5 +1,5 @@
 const getEmptyKeys = require("../Helpers/getEmptyKeys");
-const devError = require("../Helpers/devError");
+const { devError } = require("../Helpers/devError");
 const generateMessage = require("../Helpers/generateMessage");
 const User = require("../models/user");
 // const bcrypt = require("bcryptjs");
@@ -53,7 +53,7 @@ const userSignUp = async (req, res) => {
       name: name ? name : username,
       phone,
       role: "User",
-      group: group.toLowerCase(),
+      group: group?.toLowerCase(),
     });
     const result = await newUser.save();
 
@@ -93,7 +93,7 @@ const adminSignUp = async (req, res) => {
     const emptyKeys = getEmptyKeys({ username, password, email });
     if (emptyKeys.length > 0)
       return generateMessage(`Vui lòng nhập ${emptyKeys[0]}.`, res);
-
+    if (!isValidGroup(group)) return generateMessage("Group không hợp lệ", res);
     const foundedUser = await User.findOne().or([
       { username, isActive: true },
       { email, isActive: true },
@@ -115,7 +115,7 @@ const adminSignUp = async (req, res) => {
       name: name ? name : username,
       phone,
       role: "Admin",
-      group: group.toLowerCase(),
+      group: group?.toLowerCase(),
     });
     const result = await newUser.save();
 
@@ -166,10 +166,7 @@ const signIn = async (req, res) => {
     await foundedUser.save();
     res.send({
       message: "Đăng nhập thành công.",
-      username: foundedUser.username,
       name: foundedUser.name,
-      email: foundedUser.email,
-      phone: foundedUser.phone,
       role: foundedUser.role,
       accessToken: token,
     });
@@ -186,7 +183,7 @@ const userInfo = async (req, res) => {
       isActive: true,
     }).populate(
       "hostedList bookedList reviews wishList",
-      "reviewer rating comment booker property startDate endDate totalPrice username propertyType reviews longitude latitude"
+      "reviewer rating comment booker property group cityCode startDate endDate totalPrice rentalType rating coords"
     );
     if (!foundedUser) return generateMessage("Người dùng không tồn tại", res);
     res.send(foundedUser);
@@ -197,8 +194,11 @@ const userInfo = async (req, res) => {
 
 const userSignout = async (req, res) => {
   const index = req.user.tokens.findIndex((token) => token === req.token);
-  req.user.tokens.splice(index, 1);
-  await req.user.save();
+  if (index !== -1) {
+    req.user.tokens.splice(index, 1);
+    await req.user.save();
+  }
+
   return res.send({ message: "Đăng xuất thành công" });
 };
 
@@ -217,41 +217,49 @@ const uploadAvatar = async (req, res) => {
 const getListRolesOfUser = async (req, res) => {
   res.send([
     {
-      role: "NguoiDung",
-      roleName: "Người dùng",
+      role: "User",
+      desc: "Can be a host or just a regular user",
     },
     {
-      role: "QuanTri",
-      roleName: "Quản trị",
+      role: "Admin",
+      desc: "Like user but more power",
     },
   ]);
 };
 
 const getAllUser = async (req, res) => {
-  let { keyWord } = req.query;
+  let { keyWord, group = "gp01" } = req.query;
+  if (!isValidGroup(group)) return generateMessage("Group không hợp lệ", res);
   if (keyWord) {
     const regex = vietnameseRegexStr(keyWord);
-    const users = await User.find({ isActive: true }).or([
-      { username: { $regex: regex } },
-      { name: { $regex: regex } },
-      { email: { $regex: regex } },
-    ]);
+    const users = await User.find({ group, isActive: true })
+      .or([
+        { username: { $regex: regex } },
+        { name: { $regex: regex } },
+        { email: { $regex: regex } },
+      ])
+      .populate("wishList reviews hostedList bookedList");
     res.send(users);
   } else {
-    const users = await User.find({ isActive: true });
+    const users = await User.find({ group, isActive: true }).populate(
+      "wishList reviews hostedList bookedList"
+    );
     res.send(users);
   }
 };
 
 const getUsersPerPage = async (req, res) => {
-  let { keyWord, currentPage = 1, pageSize = 20 } = req.query;
+  let { keyWord, currentPage = 1, pageSize = 20, group = "gp01" } = req.query;
+  if (!isValidGroup(group)) return generateMessage("Group không hợp lệ", res);
   currentPage = Number(currentPage);
   pageSize = Number(pageSize);
+  if (isNaN(currentPage) || isNaN(pageSize))
+    return generateMessage("CurrentPage hoặc pageSize không hợp lệ", res);
   let listUser = null;
   let totalCount = null;
   if (keyWord) {
     const regex = vietnameseRegexStr(keyWord);
-    listUser = await User.find({ isActive: true })
+    listUser = await User.find({ group, isActive: true })
       .or([
         { username: { $regex: regex } },
         { name: { $regex: regex } },
@@ -259,7 +267,7 @@ const getUsersPerPage = async (req, res) => {
       ])
       .skip((currentPage - 1) * pageSize)
       .limit(pageSize);
-    totalCount = await User.find({ isActive: true })
+    totalCount = await User.find({ group, isActive: true })
       .or([
         { username: { $regex: regex } },
         { name: { $regex: regex } },
@@ -267,11 +275,11 @@ const getUsersPerPage = async (req, res) => {
       ])
       .countDocuments();
   } else {
-    listUser = await User.find({ isActive: true })
+    listUser = await User.find({ group, isActive: true })
       .skip((currentPage - 1) * pageSize)
       .limit(pageSize);
 
-    totalCount = await User.find({ isActive: true }).countDocuments();
+    totalCount = await User.find({ group, isActive: true }).countDocuments();
   }
 
   const totalPages =
@@ -308,14 +316,14 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
   const { username } = req.query;
   if (!username) return generateMessage("Username?", res);
-  else if (username === req.user.username || req.user.role === "QuanTri") {
+  else if (username === req.user.username || req.user.role === "Admin") {
     const user = await User.findOne({ username, isActive: true });
     if (!user) return generateMessage("Người dùng không tồn tại", res);
     user.isActive = false;
     await user.save();
     if (user.hostedList.length > 0)
       await user.hostedList.forEach(async (property) => {
-        const prop = await Property.findOne({ _id: property });
+        const prop = await Property.findOne({ _id: property, isActive: true });
         prop.isActive = false;
         await prop.save();
       });

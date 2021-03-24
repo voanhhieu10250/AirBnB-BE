@@ -3,7 +3,7 @@ const config = require("config");
 const User = require("../models/user");
 const generateMessage = require("../Helpers/generateMessage");
 const getEmptyKeys = require("../Helpers/getEmptyKeys");
-const devError = require("../Helpers/devError");
+const { devError } = require("../Helpers/devError");
 
 const jwtSignature = config.get("jwtSignature");
 

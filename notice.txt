@@ -1,0 +1,18 @@
+Nhớ gom các câu thông báo vào chung 1 file constant.
+Fix lại các status res cho đúng với các trường hợp
+
+Những thứ cần lưu ý khi thêm vào:
+- search, findMethods: 
+	+ lưu ý field isActive, isPublished
+	+ regex (nếu cần)
+	+ check group require
+	+ check cityCode (nếu có)
+
+- group, role:
+	+ Check isValidGroup
+	+ Check type String
+	+ Check lowerCase, upperCase
+	+ Check bị trùng ID (nếu cần)
+	+ Check rỗng (nếu cần)
+	+ Handle Error Schema (Nếu có)
+- 

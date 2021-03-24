@@ -22,7 +22,7 @@ const nonAccentVietnamese = (str) => {
 };
 
 // Tạo regex để tìm thông tin theo từ khóa (kể cả có dấu hay không dấu)
-const vietnameseRegexStr = (str) => {
+const vietnameseRegexStr = (str, exact = false) => {
   str = str.toLowerCase();
   str = str.replace(
     /a|à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g,
@@ -39,6 +39,7 @@ const vietnameseRegexStr = (str) => {
   str = str.replace(/d|đ/g, "(d|đ)");
   str = str.replace(/\u0300|\u0301|\u0303|\u0309|\u0323/g, "");
   str = str.replace(/\u02C6|\u0306|\u031B/g, "");
+  if (exact) return new RegExp("^" + str + "+$", "i");
   return new RegExp(str, "i");
 };
 

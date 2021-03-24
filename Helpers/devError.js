@@ -8,4 +8,10 @@ const devError = (
   return response.status(status).send({ message, error });
 };
 
-module.exports = devError;
+const clgErrorsServer = (error) => {
+  for (let index in error.errors) {
+    console.log(error.errors[index].message);
+  }
+};
+
+module.exports = { devError, clgErrorsServer };

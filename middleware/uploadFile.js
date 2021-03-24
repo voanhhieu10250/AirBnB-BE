@@ -1,5 +1,5 @@
 const multer = require("multer");
-const devError = require("../Helpers/devError");
+const { devError } = require("../Helpers/devError");
 const generateMessage = require("../Helpers/generateMessage");
 
 const uploadCallBack = multer({

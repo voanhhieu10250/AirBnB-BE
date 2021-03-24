@@ -24,7 +24,7 @@ const propertySchema = new mongoose.Schema(
         "gp15",
       ],
     },
-    cityCode: { type: String, default: "all" },
+    cityCode: { type: String, default: "none" },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -120,6 +120,10 @@ const propertySchema = new mongoose.Schema(
         ref: "Review",
         default: [],
       },
+    },
+    isPublished: {
+      type: Boolean,
+      default: false,
     },
     isActive: {
       type: Boolean,
