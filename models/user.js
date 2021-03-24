@@ -3,13 +3,34 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
-    group: { type: String, default: "gp01" },
+    group: {
+      type: String,
+      default: "gp01",
+      enum: [
+        "gp00",
+        "gp01",
+        "gp02",
+        "gp03",
+        "gp04",
+        "gp05",
+        "gp06",
+        "gp07",
+        "gp08",
+        "gp09",
+        "gp10",
+        "gp11",
+        "gp12",
+        "gp13",
+        "gp14",
+        "gp15",
+      ],
+    },
     username: { type: String, required: true },
     password: { type: String, required: true },
     email: { type: String, required: true },
     phone: { type: String, default: null },
     name: { type: String, required: true },
-    role: { type: String, default: "NguoiDung" },
+    role: { type: String, default: "User", enum: ["User", "Admin"] },
     description: { type: String, default: null },
     hostedList: {
       type: [mongoose.Schema.Types.ObjectId],

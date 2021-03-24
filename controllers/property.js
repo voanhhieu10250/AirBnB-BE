@@ -1,9 +1,31 @@
 const getEmptyKeys = require("../Helpers/getEmptyKeys");
-const devError = require("../Helpers/devError");
 const generateMessage = require("../Helpers/generateMessage");
 const { Property } = require("../models/property");
 const isKeysTypeCorrect = require("../Helpers/isKeysTypeCorrect");
 const User = require("../models/user");
+
+const getListRentalType = (req, res) => {
+  res.send([
+    {
+      rentalType: "PrivateRoom",
+      name: "Private room",
+      desc:
+        "Guests have their own private room for sleeping. Other areas could be shared.",
+    },
+    {
+      rentalType: "EntirePlace",
+      name: "Entire place",
+      desc:
+        " Guests have the whole place to themselves. This usually includes a bedroom, a bathroom, and a kitchen. Hosts should note in the description if they'll be on the property (ex: 'Host occupies first floor of the home')",
+    },
+    {
+      rentalType: "SharedRoom",
+      name: "Shared room",
+      desc:
+        "Guests sleep in a bedroom or a common area that could be shared with others.",
+    },
+  ]);
+};
 
 const createRentalProperty = async (req, res) => {
   const {
@@ -18,6 +40,7 @@ const createRentalProperty = async (req, res) => {
     description,
     longitude,
     latitude,
+    group,
   } = req.body;
 
   try {
@@ -36,6 +59,7 @@ const createRentalProperty = async (req, res) => {
         rentalType,
         title,
         description,
+        group,
       }) ||
       !isKeysTypeCorrect("number", {
         amountOfGuest,
@@ -49,7 +73,7 @@ const createRentalProperty = async (req, res) => {
       return generateMessage("Dữ liệu không hợp lệ", res);
     const newProperty = new Property({
       owner: req.user._id,
-      group: req.user.group,
+      group: group.toLowerCase() || req.user.group,
       address,
       cityCode,
       pricePerDay,
@@ -77,7 +101,10 @@ const createRentalProperty = async (req, res) => {
       },
     });
   } catch (error) {
-    devError(error, res);
+    if (error.errors?.rentalType?.message)
+      return generateMessage(error.errors.rentalType.message, res);
+    if (error.errors?.group?.message)
+      return generateMessage(error.errors.group.message, res);
   }
 };
 
@@ -114,6 +141,8 @@ const getPropertyInfo = async (req, res) => {
 
 const updateProperty = async (req, res) => {};
 
+const updatePropertyImages = async (req, res) => {};
+
 const deleteProperty = async (req, res) => {};
 
 const getListProperty = async (req, res) => {};
@@ -124,4 +153,5 @@ module.exports = {
   updateProperty,
   deleteProperty,
   getListProperty,
+  getListRentalType,
 };

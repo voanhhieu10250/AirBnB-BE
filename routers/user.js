@@ -23,7 +23,7 @@ router.post("/QuanLyNguoiDung/DangKy", userSignUp);
 
 router.post(
   "/QuanLyNguoiDung/DangKyNguoiDungQuanTri",
-  auth(["QuanTri"]),
+  auth(["Admin"]),
   adminSignUp
 );
 

@@ -22,7 +22,7 @@ const auth = (roles) => async (req, res, next) => {
     if (emptyKeys.length > 0)
       return generateMessage("Dữ liệu không hợp lệ", res);
 
-    const allowRoles = roles || ["QuanTri", "NguoiDung"];
+    const allowRoles = roles || ["Admin", "User"];
 
     const foundedUser = await User.findOne({
       _id: decoded._id,

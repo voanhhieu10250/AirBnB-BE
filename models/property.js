@@ -2,14 +2,39 @@ const mongoose = require("mongoose");
 
 const propertySchema = new mongoose.Schema(
   {
-    group: { type: String, default: "gp01" },
+    group: {
+      type: String,
+      default: "gp01",
+      enum: [
+        "gp00",
+        "gp01",
+        "gp02",
+        "gp03",
+        "gp04",
+        "gp05",
+        "gp06",
+        "gp07",
+        "gp08",
+        "gp09",
+        "gp10",
+        "gp11",
+        "gp12",
+        "gp13",
+        "gp14",
+        "gp15",
+      ],
+    },
     cityCode: { type: String, default: "all" },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    rentalType: { type: String, default: "PhongRieng" },
+    rentalType: {
+      type: String,
+      default: "PrivateRoom",
+      enum: ["PrivateRoom", "EntirePlace", "SharedRoom"],
+    },
     roomsAndBeds: {
       beds: { type: Number, default: 1 },
       bedrooms: { type: Number, default: 1 },

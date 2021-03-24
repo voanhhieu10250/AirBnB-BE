@@ -52,8 +52,8 @@ const userSignUp = async (req, res) => {
       email,
       name: name ? name : username,
       phone,
-      role: "NguoiDung",
-      group,
+      role: "User",
+      group: group.toLowerCase(),
     });
     const result = await newUser.save();
 
@@ -67,6 +67,10 @@ const userSignUp = async (req, res) => {
       group: result.group,
     });
   } catch (err) {
+    if (err.errors?.group?.message)
+      return generateMessage(error.errors.group.message, res);
+    if (err.errors?.role?.message)
+      return generateMessage(error.errors.role.message, res);
     devError(err, res);
   }
 };
@@ -75,7 +79,14 @@ const adminSignUp = async (req, res) => {
   const { username, password, name, email, phone, group } = req.body;
   try {
     if (
-      !isKeysTypeCorrect("string", { username, password, name, email, phone })
+      !isKeysTypeCorrect("string", {
+        username,
+        password,
+        name,
+        email,
+        phone,
+        group,
+      })
     )
       return generateMessage("Dữ liệu truyền vào không đúng định dạng.", res);
 
@@ -103,7 +114,8 @@ const adminSignUp = async (req, res) => {
       email,
       name: name ? name : username,
       phone,
-      role: "QuanTri",
+      role: "Admin",
+      group: group.toLowerCase(),
     });
     const result = await newUser.save();
 
@@ -116,6 +128,10 @@ const adminSignUp = async (req, res) => {
       phone: result.phone,
     });
   } catch (error) {
+    if (err.errors?.group?.message)
+      return generateMessage(error.errors.group.message, res);
+    if (err.errors?.role?.message)
+      return generateMessage(error.errors.role.message, res);
     devError(error, res);
   }
 };
@@ -249,13 +265,13 @@ const getUsersPerPage = async (req, res) => {
         { name: { $regex: regex } },
         { email: { $regex: regex } },
       ])
-      .count();
+      .countDocuments();
   } else {
     listUser = await User.find({ isActive: true })
       .skip((currentPage - 1) * pageSize)
       .limit(pageSize);
 
-    totalCount = await User.find({ isActive: true }).count();
+    totalCount = await User.find({ isActive: true }).countDocuments();
   }
 
   const totalPages =
@@ -297,9 +313,12 @@ const deleteUser = async (req, res) => {
     if (!user) return generateMessage("Người dùng không tồn tại", res);
     user.isActive = false;
     await user.save();
-    await user.hostedList.forEach(async (property) => {
-      await Property.findByIdAndUpdate(property, { isActive: false });
-    });
+    if (user.hostedList.length > 0)
+      await user.hostedList.forEach(async (property) => {
+        const prop = await Property.findOne({ _id: property });
+        prop.isActive = false;
+        await prop.save();
+      });
     return res.send({ message: "Xóa thành công" });
   } else
     return generateMessage("Bạn không có quyền thực hiện chức năng này", res);
