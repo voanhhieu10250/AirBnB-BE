@@ -7,8 +7,10 @@ const generateMessage = require("../Helpers/generateMessage");
 const getEmptyKeys = require("../Helpers/getEmptyKeys");
 const isKeysTypeCorrect = require("../Helpers/isKeysTypeCorrect");
 const isValidGroup = require("../Helpers/validateGroup");
+const { find } = require("../models/city");
 const City = require("../models/city");
 
+// Dành cho Admin
 const addNewCity = async (req, res) => {
   let { cityCode, cityName, searchKey } = req.body;
 
@@ -45,10 +47,10 @@ const addNewCity = async (req, res) => {
   });
 };
 
-const getCityInfo = async (req, res) => {
-  const { cityCode, group } = req.query;
-  // tại sao lại cần phải lấy city theo code ta? người dùng nhập tên mà, chứ có phải nhập code đâu
-  const emptyKeys = getEmptyKeys({ cityCode, group });
+// Chủ yếu dành cho list city có sẵn ở trang HomePage. Chứ người dùng đâu có nhập cityCode
+const getCityDetails = async (req, res) => {
+  const { cityCode, group = "gp01" } = req.query;
+  const emptyKeys = getEmptyKeys({ cityCode });
   if (emptyKeys.length > 0)
     return generateMessage(`${emptyKeys[0]} is required`, res);
   if (!isKeysTypeCorrect("string", { cityCode, group }))
@@ -75,13 +77,47 @@ const getCityInfo = async (req, res) => {
   }
 };
 
-const getListCityInfo = async (req, res) => {};
+// Dành cho lúc list ra các thành phố để người dùng chọn ở trang homePage
+const getListCity = async (req, res) => {
+  let { cityCode } = req.query;
+  try {
+    if (cityCode) {
+      if (typeof cityCode !== "string")
+        return generateMessage("Invalid code", res);
+      const cities = await City.findOne({ code: cityCode }).select(
+        "code name searchKey -_id"
+      );
+      return res.send([cities]);
+    }
+    const cities = await City.find().select("code name searchKey -_id");
+    res.send(cities);
+  } catch (error) {
+    devError(error, res);
+  }
+};
 
-const updateCityInfo = async (req, res) => {};
+// Admin only
+const updateCityInfo = async (req, res) => {
+  const { cityCode, name, searchKey } = req.body;
+  try {
+    if (!cityCode) return generateMessage("City code is required", res);
+    if (!isKeysTypeCorrect("string", { cityCode, name, searchKey }))
+      return generateMessage("Invalid input type", res);
+    const foundedCity = await City.findOne({ code: cityCode });
+    // tới đây rồi nè
+    if (foundedCity.defaultCity) {
+      foundedCity.searchKey = searchKey;
+      return generateMessage("You can not touch this");
+    }
+  } catch (error) {
+    devError(error, res);
+  }
+};
 
 const deleteCityInfo = async (req, res) => {};
 
 module.exports = {
   addNewCity,
-  getCityInfo,
+  getCityDetails,
+  getListCity,
 };
