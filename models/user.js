@@ -32,28 +32,32 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true },
     role: { type: String, default: "User", enum: ["User", "Admin"] },
     description: { type: String, default: null },
-    hostedList: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "Property",
-      default: [],
-    },
-    bookedList: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "Reservation",
-      default: [],
-    },
+    hostedList: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Property",
+      },
+    ],
+    bookedList: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Reservation",
+      },
+    ],
     avatar: { type: String, default: null },
     tokens: { type: [String], default: [] },
-    reviews: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "Review",
-      default: [],
-    },
-    wishList: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "Property",
-      default: [],
-    },
+    reviews: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Review",
+      },
+    ],
+    wishList: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Property",
+      },
+    ],
     isActive: {
       type: Boolean,
       default: true,

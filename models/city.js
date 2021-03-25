@@ -11,18 +11,26 @@ const citySchema = new mongoose.Schema({
   },
   searchKey: {
     type: String,
-    default: null,
+    default: function () {
+      return `${this.code} | ${this.name}`;
+    },
   },
-  listHostedProperties: {
-    type: [mongoose.Schema.Types.ObjectId],
-    ref: "Property",
-    default: [],
+  listHostedProperties: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Property",
+    },
+  ],
+  defaultCity: {
+    type: Boolean,
+    default: false,
   },
 });
 
 citySchema.methods.toJSON = function () {
   const city = this.toObject();
   delete city._id;
+  delete city.defaultCity;
   return city;
 };
 

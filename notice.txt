@@ -1,5 +1,7 @@
 Nhớ gom các câu thông báo vào chung 1 file constant.
 Fix lại các status res cho đúng với các trường hợp
+Nhớ populate listOfReservation và Review ở getPropertyInfo và getUserInfo (nó bị lỗi Schema hasn't been registed for model)
+Nhớ check dòng 34 CityController trước khi nộp dự án
 
 Những thứ cần lưu ý khi thêm vào:
 - search, findMethods: 

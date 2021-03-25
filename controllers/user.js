@@ -181,10 +181,14 @@ const userInfo = async (req, res) => {
     const foundedUser = await User.findOne({
       username,
       isActive: true,
-    }).populate(
-      "hostedList bookedList reviews wishList",
-      "reviewer rating comment booker property group cityCode startDate endDate totalPrice rentalType rating coords"
-    );
+    }).populate({
+      path: "hostedList wishList",
+      match: { isActive: true },
+      select:
+        "group cityCode rentalType roomsAndBeds amountOfGuest address title description images pricePerDay rating isPublished",
+    });
+    // .populate("bookedList", "booker property startDate endDate totalPrice")
+    // .populate("reviews", "reviewer rating comment -_id");
     if (!foundedUser) return generateMessage("Người dùng không tồn tại", res);
     res.send(foundedUser);
   } catch (error) {

@@ -24,7 +24,7 @@ const propertySchema = new mongoose.Schema(
         "gp15",
       ],
     },
-    cityCode: { type: String, default: "none" },
+    cityCode: { type: String, required: true },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -98,14 +98,15 @@ const propertySchema = new mongoose.Schema(
     pricePerDay: { type: Number, required: true },
     serviceFee: { type: Number, default: null },
     coords: {
-      lng: { type: Number, default: null },
-      lat: { type: Number, default: null },
+      lng: { type: Number, required: true },
+      lat: { type: Number, required: true },
     },
-    listOfReservation: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "Reservation",
-      default: [],
-    },
+    listOfReservation: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Reservation",
+      },
+    ],
     rating: {
       scores: {
         final: { type: Number, default: 0 },
@@ -115,11 +116,12 @@ const propertySchema = new mongoose.Schema(
         location: { type: Number, default: 0 },
         checkIn: { type: Number, default: 0 },
       },
-      reviews: {
-        type: [mongoose.Schema.Types.ObjectId],
-        ref: "Review",
-        default: [],
-      },
+      reviews: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Review",
+        },
+      ],
     },
     isPublished: {
       type: Boolean,

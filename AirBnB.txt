@@ -3,6 +3,8 @@ https://creatly.com/diagram/example/jw17x1o11/New%20Airbnb%20Use%20Case%20Diagra
 https://github.com/lestercardoz11/airbnb-uml-diagrams
 https://drawsql.app/templates/airbnb
 
+googlemapkey: AIzaSyB2xnVrrLsky6x5vSWZugziRvBKW6Rn8B4
+
 loại người dùng
  - hostUser
  - regularUser

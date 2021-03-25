@@ -4,6 +4,8 @@ const { Property } = require("../models/property");
 const isKeysTypeCorrect = require("../Helpers/isKeysTypeCorrect");
 const User = require("../models/user");
 const isValidGroup = require("../Helpers/validateGroup");
+const { devError } = require("../Helpers/devError");
+const City = require("../models/city");
 
 const getListRentalType = (req, res) => {
   res.send([
@@ -50,7 +52,10 @@ const createRentalProperty = async (req, res) => {
       address,
       pricePerDay,
       title,
+      cityCode,
       description,
+      longitude,
+      latitude,
     });
     if (emptyKeys.length > 0)
       return generateMessage(`${emptyKeys[0]} không được trống`, res);
@@ -76,6 +81,8 @@ const createRentalProperty = async (req, res) => {
       return generateMessage("Kiểu dữ liệu không hợp lệ", res);
     if (group && !isValidGroup(group))
       return generateMessage("Group không hợp lệ", res);
+    const foundedCity = await City.findOne({ code: cityCode });
+    if (!foundedCity) return generateMessage("Invalid cityCode", res);
     const newProperty = new Property({
       owner: req.user._id,
       group: group.toLowerCase() || req.user.group,
@@ -99,6 +106,8 @@ const createRentalProperty = async (req, res) => {
     let result = await newProperty.save();
     req.user.hostedList.push(result._id);
     await req.user.save();
+    foundedCity.listHostedProperties.push(result._id);
+    await foundedCity.save();
     result = result.toJSON();
     return res.send({
       ...result,
@@ -123,31 +132,48 @@ const getPropertyInfo = async (req, res) => {
     const property = await Property.findOne({
       _id: id,
       isActive: true,
-    }).populate("listOfReservation reviews");
-    if (!property) return generateMessage("Property không tồn tại", res);
-    let propertyOwner = await User.findOne({
-      _id: property.owner,
-      isActive: true,
-    });
-    if (!propertyOwner) return generateMessage("Owner no longer exists");
-    propertyOwner = propertyOwner.toJSON();
-    delete propertyOwner.wishList;
-    delete propertyOwner.bookedList;
-    delete propertyOwner.hostedList;
-    delete propertyOwner.role;
-    delete propertyOwner.createdAt;
-    delete propertyOwner.updatedAt;
-    delete propertyOwner.description;
-    delete propertyOwner.password;
-    delete propertyOwner.group;
+    })
+      // .populate("listOfReservation", "-_id")
+      // .populate("reviews", "-_id")
+      .populate({
+        path: "owner",
+        match: { isActive: true },
+        select: "name username avatar -_id",
+      });
+    if (!property) {
+      return generateMessage("Property không tồn tại", res);
+    }
+    if (!property.owner || property.owner.length === 0) {
+      property.isActive = false;
+      property.isPublished = false;
+      await property.save();
+      return generateMessage("Property không tồn tại", res);
+    }
     return res.send({
       ...property._doc,
-      owner: propertyOwner,
     });
-  } catch (error) {}
+  } catch (error) {
+    devError(error, res);
+  }
 };
 
-const updateProperty = async (req, res) => {};
+const updatePropertyInfo = async (req, res) => {
+  // chia ra làm nhiều api update. Chia theo loại giống như Airbnb
+  const {
+    propertyId,
+    rentalType,
+    cityCode,
+    amountOfGuest,
+    address,
+    pricePerDay,
+    serviceFee,
+    title,
+    description,
+    isPublished,
+    latitude,
+    longitude,
+  } = req.body;
+};
 
 const updatePropertyImages = async (req, res) => {};
 
@@ -158,8 +184,6 @@ const getListProperty = async (req, res) => {};
 module.exports = {
   createRentalProperty,
   getPropertyInfo,
-  updateProperty,
-  deleteProperty,
-  getListProperty,
+  updatePropertyInfo,
   getListRentalType,
 };
