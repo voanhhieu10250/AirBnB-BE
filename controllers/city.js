@@ -96,28 +96,82 @@ const getListCity = async (req, res) => {
   }
 };
 
-// Admin only
+// Admin only. Only hieurom can change all things about cities
 const updateCityInfo = async (req, res) => {
-  const { cityCode, name, searchKey } = req.body;
+  const { cityCode, name, searchKey, defaultCity } = req.body;
+  const regex = /^[a-zA-Z ]+$/;
   try {
     if (!cityCode) return generateMessage("City code is required", res);
     if (!isKeysTypeCorrect("string", { cityCode, name, searchKey }))
       return generateMessage("Invalid input type", res);
-    const foundedCity = await City.findOne({ code: cityCode });
-    // tới đây rồi nè
-    if (foundedCity.defaultCity) {
-      foundedCity.searchKey = searchKey;
-      return generateMessage("You can not touch this");
+    const foundedCity = await City.findOne({ code: cityCode }).select(
+      "-listHostedProperties"
+    );
+    if (!foundedCity) return generateMessage("City does not exist", res);
+
+    if (req.user.username === "hieurom") {
+      foundedCity.name = name || foundedCity.name;
+      foundedCity.searchKey = searchKey || foundedCity.searchKey;
+      foundedCity.code = cityCode || foundedCity.code;
+      foundedCity.defaultCity = defaultCity || foundedCity.defaultCity;
+      const result = await foundedCity.save();
+      result.toJSON();
+      delete result.listHostedProperties;
+      return res.send({ message: "Update successful", result });
+    } else if (foundedCity.defaultCity) {
+      foundedCity.searchKey = searchKey
+        ? foundedCity.searchKey + `|${searchKey}`
+        : foundedCity.searchKey;
+      const result = await foundedCity.save();
+      result.toJSON();
+      delete result.listHostedProperties;
+      return res.send({
+        message:
+          "For default cities, you can only add more searchKey for them.",
+        result,
+      });
+    } else {
+      if (name) {
+        const foundedCityName = await City.findOne({
+          name: { $regex: vietnameseRegexStr(name, true) },
+        });
+        if (foundedCityName)
+          return generateMessage("City name already exists", res);
+        foundedCity.name = name.trim();
+      }
+      if (searchKey) foundedCity.searchKey = searchKey;
+      const result = await foundedCity.save();
+      result.toJSON();
+      delete result.listHostedProperties;
+      return res.send({ message: "Updated successful", result });
     }
   } catch (error) {
     devError(error, res);
   }
 };
 
-const deleteCityInfo = async (req, res) => {};
+const deleteCityInfo = async (req, res) => {
+  const { cityCode } = req.query;
+  try {
+    if (!cityCode) return generateMessage("City code is required", res);
+    const foundedCity = await City.findOne({ code: cityCode }).populate({
+      path: "listHostedProperties",
+      select: "isActive isPublished",
+    });
+    if (!foundedCity) return generateMessage("City does not exist", res);
+
+    if (foundedCity.listHostedProperties.length > 0)
+      return generateMessage(
+        "There are already some property been hosted in this city, you cannot delete this city."
+      );
+    if (foundedCity.defaultCity)
+      return generateMessage("You can not delete default cities");
+  } catch (error) {}
+};
 
 module.exports = {
   addNewCity,
   getCityDetails,
   getListCity,
+  updateCityInfo,
 };
