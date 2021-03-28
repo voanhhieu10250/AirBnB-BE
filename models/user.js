@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema(
     group: {
       type: String,
       default: "gp01",
+      index: true,
       enum: [
         "gp00",
         "gp01",
@@ -25,7 +26,7 @@ const userSchema = new mongoose.Schema(
         "gp15",
       ],
     },
-    username: { type: String, required: true },
+    username: { type: String, required: true, index: true },
     password: { type: String, required: true },
     email: { type: String, required: true },
     phone: { type: String, default: null },

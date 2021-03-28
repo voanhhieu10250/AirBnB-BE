@@ -4,26 +4,25 @@ const citySchema = new mongoose.Schema({
   code: {
     type: String,
     required: true,
+    index: true,
   },
   name: {
     type: String,
     required: true,
   },
-  searchKey: {
-    type: String,
-    default: function () {
-      return `${this.code} | ${this.name}`;
-    },
-  },
-  listHostedProperties: [
+  listOfDistricts: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Property",
+      ref: "District",
     },
   ],
   defaultCity: {
     type: Boolean,
-    default: false,
+    default: true,
+  },
+  isActive: {
+    type: Boolean,
+    default: true,
   },
 });
 
@@ -31,6 +30,7 @@ citySchema.methods.toJSON = function () {
   const city = this.toObject();
   delete city._id;
   delete city.defaultCity;
+  delete city.isActive;
   return city;
 };
 

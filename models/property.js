@@ -5,6 +5,7 @@ const propertySchema = new mongoose.Schema(
     group: {
       type: String,
       default: "gp01",
+      index: true,
       enum: [
         "gp00",
         "gp01",
@@ -24,7 +25,7 @@ const propertySchema = new mongoose.Schema(
         "gp15",
       ],
     },
-    cityCode: { type: String, required: true },
+    districtCode: { type: String, required: true, index: true },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -122,10 +123,16 @@ const propertySchema = new mongoose.Schema(
           ref: "Review",
         },
       ],
+      totalReviews: {
+        type: Number,
+        default: function () {
+          return this.reviews.length;
+        },
+      },
     },
     isPublished: {
       type: Boolean,
-      default: false,
+      default: true,
     },
     isActive: {
       type: Boolean,

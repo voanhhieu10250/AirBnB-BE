@@ -10,6 +10,11 @@ const isKeysTypeCorrect = (keyType, object, strictModeForEmptyKey = false) => {
       if (object[item] === undefined && !strictModeForEmptyKey) continue;
       if (!isNaN(Number(object[item])) && keyType === "number") continue;
       if (
+        keyType === "boolean" &&
+        (object[item] === "true" || object[item] === "false")
+      )
+        continue;
+      if (
         (object[item] === null && keyType !== "null") ||
         typeof object[item] !== keyType
       ) {
@@ -22,6 +27,11 @@ const isKeysTypeCorrect = (keyType, object, strictModeForEmptyKey = false) => {
     for (const item in keyType) {
       if (object[item] === undefined && !strictModeForEmptyKey) continue;
       if (!isNaN(Number(object[item])) && keyType[item] === "number") continue;
+      if (
+        keyType[item] === "boolean" &&
+        (object[item] === "true" || object[item] === "false")
+      )
+        continue;
       if (
         (object[item] === null && keyType[item] !== "null") ||
         (Array.isArray(object[item]) && keyType[item] !== "array") ||

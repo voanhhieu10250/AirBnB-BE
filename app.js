@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const uploadRouter = require("./routers/upload");
 const userRouter = require("./routers/user");
 const propertyRouter = require("./routers/property");
+const districtRouter = require("./routers/district");
 const cityRouter = require("./routers/city");
 const path = require("path");
 const cors = require("cors");
@@ -26,6 +27,8 @@ app.use(userRouter);
 app.use(uploadRouter);
 
 app.use(propertyRouter);
+
+app.use(districtRouter);
 
 app.use(cityRouter);
 

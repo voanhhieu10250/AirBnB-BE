@@ -33,7 +33,8 @@ const getListRentalType = (req, res) => {
 const createRentalProperty = async (req, res) => {
   const {
     address,
-    cityCode,
+    cityName,
+    district,
     rentalType,
     amountOfGuest,
     pricePerDay,
@@ -45,49 +46,37 @@ const createRentalProperty = async (req, res) => {
     longitude,
     latitude,
     group,
+    isPublished,
   } = req.body;
-
   try {
     const emptyKeys = getEmptyKeys({
       address,
       pricePerDay,
+      district,
       title,
-      cityCode,
+      cityName,
       description,
       longitude,
       latitude,
+      isPublished,
     });
     if (emptyKeys.length > 0)
       return generateMessage(`${emptyKeys[0]} không được trống`, res);
     if (
-      !isKeysTypeCorrect("string", {
-        address,
-        cityCode,
-        rentalType,
-        title,
-        description,
-        group,
-      }) ||
-      !isKeysTypeCorrect("number", {
-        amountOfGuest,
-        pricePerDay,
-        bedrooms,
-        bathrooms,
-        longitude,
-        latitude,
-        beds,
-      })
+      isKeysTypeCorrect("object", req.body) ||
+      isKeysTypeCorrect("array", req.body) ||
+      !isKeysTypeCorrect("boolean", isPublished)
     )
       return generateMessage("Kiểu dữ liệu không hợp lệ", res);
     if (group && !isValidGroup(group))
       return generateMessage("Group không hợp lệ", res);
-    const foundedCity = await City.findOne({ code: cityCode });
-    if (!foundedCity) return generateMessage("Invalid cityCode", res);
+    const foundedCity = await City.findOne({ code: cityName });
+    if (!foundedCity) return generateMessage("Invalid cityName", res);
     const newProperty = new Property({
       owner: req.user._id,
       group: group.toLowerCase() || req.user.group,
       address,
-      cityCode,
+      cityName,
       pricePerDay,
       title,
       description,
@@ -102,6 +91,7 @@ const createRentalProperty = async (req, res) => {
         lng: longitude,
         lat: latitude,
       },
+      isPublished,
     });
     let result = await newProperty.save();
     req.user.hostedList.push(result._id);
@@ -122,6 +112,7 @@ const createRentalProperty = async (req, res) => {
       return generateMessage(error.errors.rentalType.message, res);
     if (error.errors?.group?.message)
       return generateMessage(error.errors.group.message, res);
+    res.status(500).send(error);
   }
 };
 

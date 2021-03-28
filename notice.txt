@@ -3,6 +3,9 @@ Fix lại các status res cho đúng với các trường hợp
 Nhớ populate listOfReservation và Review ở getPropertyInfo và getUserInfo (nó bị lỗi Schema hasn't been registed for model)
 Nhớ delete dòng defaultCity ở addNewCity, CityController trước khi nộp dự án
 Nhớ check lại mấy cái query trước khi nộp dự án
+Nhớ check lại các get router, nếu chuyển qua req.query được thì chuyển qua hết đi
+
+Hôm nay: làm tới phần properties. Phải nhanh lên hơi bị lâu rồi. Trễ rồi
 
 Những thứ cần lưu ý khi thêm vào:
 - search, findMethods: 
