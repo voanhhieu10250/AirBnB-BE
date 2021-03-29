@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.post(
   "/QuanLyHinhAnh/ThemHinhAnh",
-  auth(["Admin"]),
+  auth(),
   upload(uploadCallBack.fields([{ name: "photos" }])),
   uploadFile
 );

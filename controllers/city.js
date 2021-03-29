@@ -167,7 +167,11 @@ const updateCityInfo = async (req, res) => {
       isActive: true,
       code: cityCode,
     }).select("-listOfDistricts");
-    if (!foundedCity) return generateMessage("City does not exist", res);
+    if (!foundedCity)
+      return generateMessage(
+        "Can not find city that matches the city code you provided",
+        res
+      );
     if (name) {
       const foundedCityName = await City.findOne({
         isActive: true,

@@ -47,7 +47,7 @@ const propertySchema = new mongoose.Schema(
     description: { type: String, default: null },
     images: { type: [String], default: [] },
     amenities: {
-      TV: { type: Boolean, default: false },
+      television: { type: Boolean, default: false },
       kitchen: { type: Boolean, default: false },
       airConditioning: { type: Boolean, default: false },
       wifi: { type: Boolean, default: false },
@@ -75,10 +75,7 @@ const propertySchema = new mongoose.Schema(
       customRules: { type: [String], default: [] },
     },
     requireForBooker: {
-      checkInTime: {
-        from: { type: String, default: "3PM" },
-        to: { type: String, default: "5PM" },
-      },
+      checkInTime: { type: String, default: "3PM" },
       checkOutTime: { type: String, default: "1PM" },
       stayDays: {
         min: { type: Number, default: 0 },
@@ -88,6 +85,7 @@ const propertySchema = new mongoose.Schema(
       hasNoBadReview: { type: Boolean, default: false },
       customRequire: { type: [String], default: [] },
     },
+    /////////////////////////////////
     noticeAbout: {
       stairs: { type: String, default: null },
       noise: { type: String, default: null },
@@ -96,6 +94,7 @@ const propertySchema = new mongoose.Schema(
       sharedSpace: { type: String, default: null },
       cameras: { type: String, default: null },
     },
+    ////////////////////////////////
     pricePerDay: { type: Number, required: true },
     serviceFee: { type: Number, default: null },
     coords: {

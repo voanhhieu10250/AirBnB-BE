@@ -6,6 +6,8 @@ const User = require("../models/user");
 const isValidGroup = require("../Helpers/validateGroup");
 const { devError } = require("../Helpers/devError");
 const City = require("../models/city");
+const District = require("../models/district");
+const config = require("config");
 
 const getListRentalType = (req, res) => {
   res.send([
@@ -33,8 +35,7 @@ const getListRentalType = (req, res) => {
 const createRentalProperty = async (req, res) => {
   const {
     address,
-    cityName,
-    district,
+    districtCode,
     rentalType,
     amountOfGuest,
     pricePerDay,
@@ -52,31 +53,42 @@ const createRentalProperty = async (req, res) => {
     const emptyKeys = getEmptyKeys({
       address,
       pricePerDay,
-      district,
+      districtCode,
+      rentalType,
       title,
-      cityName,
       description,
       longitude,
       latitude,
-      isPublished,
     });
     if (emptyKeys.length > 0)
       return generateMessage(`${emptyKeys[0]} không được trống`, res);
     if (
       isKeysTypeCorrect("object", req.body) ||
       isKeysTypeCorrect("array", req.body) ||
-      !isKeysTypeCorrect("boolean", isPublished)
+      !isKeysTypeCorrect("boolean", isPublished) ||
+      !isKeysTypeCorrect("number", { longitude, latitude })
     )
       return generateMessage("Kiểu dữ liệu không hợp lệ", res);
     if (group && !isValidGroup(group))
       return generateMessage("Group không hợp lệ", res);
-    const foundedCity = await City.findOne({ code: cityName });
-    if (!foundedCity) return generateMessage("Invalid cityName", res);
+    const foundedDistrict = await District.findOne({
+      code: districtCode,
+      isActive: true,
+    }).select("name listOfProperties");
+    if (!foundedDistrict)
+      return generateMessage("District does not exist", res);
+    const foundedProperty = await Property.findOne({
+      group,
+      isActive: true,
+      coords: { lng: longitude, lat: latitude },
+    }).select("_id");
+    if (foundedProperty)
+      return generateMessage("This coords have already been occupate", res);
     const newProperty = new Property({
       owner: req.user._id,
-      group: group.toLowerCase() || req.user.group,
+      group: group?.toLowerCase() || req.user.group,
       address,
-      cityName,
+      districtCode,
       pricePerDay,
       title,
       description,
@@ -96,8 +108,8 @@ const createRentalProperty = async (req, res) => {
     let result = await newProperty.save();
     req.user.hostedList.push(result._id);
     await req.user.save();
-    foundedCity.listHostedProperties.push(result._id);
-    await foundedCity.save();
+    foundedDistrict.listOfProperties.push(result._id);
+    await foundedDistrict.save();
     result = result.toJSON();
     return res.send({
       ...result,
@@ -119,13 +131,23 @@ const createRentalProperty = async (req, res) => {
 const getPropertyInfo = async (req, res) => {
   const { id } = req.query;
   try {
-    if (!id) return generateMessage("Id không hợp lệ");
+    if (!id) return generateMessage("Property id is  required", res);
     const property = await Property.findOne({
       _id: id,
       isActive: true,
     })
-      // .populate("listOfReservation", "-_id")
-      // .populate("reviews", "-_id")
+      .populate({
+        path: "listOfReservation",
+        match: { isActive: true },
+        select: "-isActive -property",
+        populate: { path: "booker", select: "username email name -_id" },
+      })
+      .populate({
+        path: "rating.reviews",
+        match: { isActive: true },
+        select: "-isActive",
+        populate: { path: "reviewer", select: "username email name -_id" },
+      })
       .populate({
         path: "owner",
         match: { isActive: true },
@@ -134,39 +156,362 @@ const getPropertyInfo = async (req, res) => {
     if (!property) {
       return generateMessage("Property không tồn tại", res);
     }
-    if (!property.owner || property.owner.length === 0) {
-      property.isActive = false;
-      property.isPublished = false;
-      await property.save();
-      return generateMessage("Property không tồn tại", res);
-    }
-    return res.send({
-      ...property._doc,
-    });
+
+    return res.send(property);
   } catch (error) {
     devError(error, res);
   }
 };
 
-const updatePropertyInfo = async (req, res) => {
-  // chia ra làm nhiều api update. Chia theo loại giống như Airbnb
+// chia ra làm nhiều api update. Chia theo loại giống như Airbnb
+const updatePropertyFrontInfo = async (req, res) => {
   const {
     propertyId,
-    rentalType,
-    cityCode,
     amountOfGuest,
-    address,
+    beds,
+    bedrooms,
+    bathrooms,
     pricePerDay,
     serviceFee,
     title,
     description,
     isPublished,
-    latitude,
-    longitude,
   } = req.body;
+  try {
+    if (!propertyId) return generateMessage("Property id is required", res);
+    if (
+      !isKeysTypeCorrect("string", {
+        title,
+        description,
+      }) ||
+      isKeysTypeCorrect("number", {
+        amountOfGuest,
+        pricePerDay,
+        serviceFee,
+        beds,
+        bedrooms,
+        bathrooms,
+      }) ||
+      isKeysTypeCorrect("boolean", { isPublished })
+    ) {
+      return generateMessage("Invalid key type", res);
+    }
+    const foundedProperty = await Property.findOne({
+      _id: propertyId,
+      isActive: true,
+    }).populate("owner", "username");
+    if (!foundedProperty)
+      return generateMessage("Property does not exist", res);
+    if (
+      foundedProperty.owner.username !== req.user.username &&
+      req.user.role !== "Admin"
+    )
+      return generateMessage(
+        "You don't have the permission do this functionality.",
+        res
+      );
+    foundedProperty.amountOfGuest =
+      amountOfGuest ?? foundedProperty.amountOfGuest;
+    foundedProperty.roomsAndBeds.beds =
+      beds ?? foundedProperty.roomsAndBeds.beds;
+    foundedProperty.roomsAndBeds.bedrooms =
+      bedrooms ?? foundedProperty.roomsAndBeds.bedrooms;
+    foundedProperty.roomsAndBeds.bathrooms =
+      bathrooms ?? foundedProperty.roomsAndBeds.bathrooms;
+    foundedProperty.pricePerDay = pricePerDay ?? foundedProperty.pricePerDay;
+    foundedProperty.serviceFee = serviceFee ?? foundedProperty.serviceFee;
+    foundedProperty.title = title ?? foundedProperty.title;
+    foundedProperty.description = description ?? foundedProperty.description;
+    foundedProperty.isPublished = isPublished ?? foundedProperty.isPublished;
+    const result = await foundedProperty.save();
+    res.send(result);
+  } catch (error) {
+    devError(error, res);
+  }
 };
 
-const updatePropertyImages = async (req, res) => {};
+const addImagesToProperty = async (req, res) => {
+  const { propertyId } = req.body;
+  try {
+    const foundedProperty = await Property.findOne({
+      _id: propertyId,
+      isActive: true,
+    })
+      .select("owner images")
+      .populate("owner", "username");
+    if (!foundedProperty)
+      return generateMessage("Property does not exist", res);
+    if (
+      foundedProperty.owner.username !== req.user.username &&
+      req.user.role !== "Admin"
+    )
+      return generateMessage(
+        "You don't have the permission do this functionality.",
+        res
+      );
+
+    const imagesName = req.files.photos.map(
+      (item) => `http://${config.get("hostUrl")}/image/${item.filename}`
+    );
+    foundedProperty.images = foundedProperty.images.concat(imagesName);
+    const result = await foundedProperty.save();
+    res.send(result);
+  } catch (error) {
+    devError(error, res);
+  }
+};
+
+const removeImageFromProperty = async (req, res) => {
+  const { propertyId, imageLink } = req.body;
+  try {
+    if (!propertyId) return generateMessage("Property id is required", res);
+    if (typeof imageLink !== "string" || typeof propertyId !== "string")
+      return generateMessage("Invalid key type", res);
+    const foundedProperty = await Property.findOne({
+      _id: propertyId,
+      isActive: true,
+    })
+      .select("owner images")
+      .populate("owner", "username");
+    if (!foundedProperty)
+      return generateMessage("Property does not exist", res);
+    if (
+      foundedProperty.owner.username !== req.user.username &&
+      req.user.role !== "Admin"
+    )
+      return generateMessage(
+        "You don't have the permission do this functionality.",
+        res
+      );
+    const imageIndex = foundedProperty.images.indexOf(imageLink);
+    if (imageIndex === -1)
+      return generateMessage("Can't find your link in this property.", res);
+    foundedProperty.images.splice(imageIndex, 1);
+    const result = await foundedProperty.save();
+    res.send(result);
+  } catch (error) {
+    devError(error, res);
+  }
+};
+
+const updatePropertyAmenities = async (req, res) => {
+  const {
+    propertyId,
+    television,
+    kitchen,
+    airConditioning,
+    wifi,
+    swimmingPool,
+    washer,
+    microwave,
+    refrigerator,
+    selfCheckIn,
+    smokeAlarm,
+    hangers,
+    dryer,
+  } = req.body;
+  try {
+    if (!propertyId) return generateMessage("Property id is required", res);
+    const foundedProperty = await Property.findOne({
+      _id: propertyId,
+      isActive: true,
+    })
+      .select("amenities owner")
+      .populate("owner", "username");
+    if (!foundedProperty)
+      return generateMessage("Property does not exist", res);
+    if (
+      foundedProperty.owner.username !== req.user.username &&
+      req.user.role !== "Admin"
+    )
+      return generateMessage(
+        "You don't have the permission do this functionality.",
+        res
+      );
+    const amenities = {
+      television,
+      kitchen,
+      airConditioning,
+      wifi,
+      swimmingPool,
+      washer,
+      microwave,
+      refrigerator,
+      selfCheckIn,
+      smokeAlarm,
+      hangers,
+      dryer,
+    };
+    if (!isKeysTypeCorrect("boolean", amenities))
+      return generateMessage("Invalid key type", res);
+    for (const key in amenities) {
+      foundedProperty.amenities[key] =
+        amenities[key] ?? foundedProperty.amenities[key];
+    }
+    const result = await foundedProperty.save();
+    res.send(result);
+  } catch (error) {
+    devError(error, res);
+  }
+};
+
+const updatePropertyFacilities = async (req, res) => {
+  const { propertyId, hotTub, gym, pool, freeParking } = req.body;
+  try {
+    if (!propertyId) return generateMessage("Property id is required", res);
+    const foundedProperty = await Property.findOne({
+      _id: propertyId,
+      isActive: true,
+    })
+      .select("facilities owner")
+      .populate("owner", "username");
+    if (!foundedProperty)
+      return generateMessage("Property does not exist", res);
+    if (
+      foundedProperty.owner.username !== req.user.username &&
+      req.user.role !== "Admin"
+    )
+      return generateMessage(
+        "You don't have the permission do this functionality.",
+        res
+      );
+    const facilities = { hotTub, gym, pool, freeParking };
+    if (!isKeysTypeCorrect("boolean", facilities))
+      return generateMessage("Invalid key type", res);
+    for (const key in facilities) {
+      foundedProperty.facilities[key] =
+        facilities[key] ?? foundedProperty.facilities[key];
+    }
+    const result = await foundedProperty.save();
+    res.send(result);
+  } catch (error) {
+    devError(error, res);
+  }
+};
+
+const updatePropertyRules = async (req, res) => {
+  const {
+    propertyId,
+    petsAllowed,
+    smokingAllowed,
+    partiesAllowed,
+    longTermStaysAllowed,
+    suitableForChildren,
+    customRules,
+  } = req.body;
+  try {
+    if (!propertyId) return generateMessage("Property id is required", res);
+    const foundedProperty = await Property.findOne({
+      _id: propertyId,
+      isActive: true,
+    })
+      .select("rules owner")
+      .populate("owner", "username");
+    if (!foundedProperty)
+      return generateMessage("Property does not exist", res);
+    if (
+      foundedProperty.owner.username !== req.user.username &&
+      req.user.role !== "Admin"
+    )
+      return generateMessage(
+        "You don't have the permission do this functionality.",
+        res
+      );
+    const rules = {
+      petsAllowed,
+      smokingAllowed,
+      partiesAllowed,
+      longTermStaysAllowed,
+      suitableForChildren,
+      customRules,
+    };
+    if (!isKeysTypeCorrect("boolean", rules))
+      return generateMessage("Invalid key type", res);
+    for (const key in rules) {
+      foundedProperty.rules[key] = rules[key] ?? foundedProperty.rules[key];
+    }
+    const result = await foundedProperty.save();
+    res.send(result);
+  } catch (error) {
+    devError(error, res);
+  }
+};
+
+const updatePropertyRequireForBooker = async (req, res) => {
+  const {
+    propertyId,
+    checkInTime,
+    checkOutTime,
+    minStayDays,
+    maxStayDays,
+    identificationPapers,
+    hasNoBadReview,
+    customRequire,
+  } = req.body;
+  try {
+    if (!propertyId) return generateMessage("Property id is required", res);
+    const foundedProperty = await Property.findOne({
+      _id: propertyId,
+      isActive: true,
+    })
+      .select("requireForBooker owner")
+      .populate("owner", "username");
+    if (!foundedProperty)
+      return generateMessage("Property does not exist", res);
+    if (
+      foundedProperty.owner.username !== req.user.username &&
+      req.user.role !== "Admin"
+    )
+      return generateMessage(
+        "You don't have the permission do this functionality.",
+        res
+      );
+    const requireForBooker = {
+      checkInTime,
+      checkOutTime,
+      minStayDays,
+      maxStayDays,
+      identificationPapers,
+      hasNoBadReview,
+    };
+    const objTypes = {
+      checkInTime: "string",
+      checkOutTime: "string",
+      minStayDays: "number",
+      maxStayDays: "number",
+      identificationPapers: "boolean",
+      hasNoBadReview: "boolean",
+    };
+    if (!isKeysTypeCorrect(objTypes, requireForBooker))
+      return generateMessage("Invalid key type", res);
+    foundedProperty.requireForBooker.checkInTime =
+      checkInTime ?? foundedProperty.requireForBooker.checkInTime;
+    foundedProperty.requireForBooker.checkOutTime =
+      checkOutTime ?? foundedProperty.requireForBooker.checkOutTime;
+    foundedProperty.requireForBooker.stayDays.min =
+      minStayDays ?? foundedProperty.requireForBooker.stayDays.min;
+    foundedProperty.requireForBooker.stayDays.max =
+      maxStayDays ?? foundedProperty.requireForBooker.stayDays.max;
+    foundedProperty.requireForBooker.identificationPapers =
+      identificationPapers ??
+      foundedProperty.requireForBooker.identificationPapers;
+    foundedProperty.requireForBooker.hasNoBadReview =
+      hasNoBadReview ?? foundedProperty.requireForBooker.hasNoBadReview;
+    if (typeof customRequire === "string")
+      foundedProperty.requireForBooker.customRequire.push(customRequire);
+    if (Array.isArray(customRequire))
+      foundedProperty.requireForBooker.customRequire =
+        customRequire.length > 0
+          ? [...customRequire]
+          : foundedProperty.requireForBooker.customRequire;
+    const result = await foundedProperty.save();
+    res.send(result);
+  } catch (error) {
+    devError(error, res);
+  }
+};
+
+const updatePropertyNoticeAbout = async (req, res) => {};
 
 const deleteProperty = async (req, res) => {};
 
@@ -175,6 +520,12 @@ const getListProperty = async (req, res) => {};
 module.exports = {
   createRentalProperty,
   getPropertyInfo,
-  updatePropertyInfo,
+  updatePropertyFrontInfo,
   getListRentalType,
+  addImagesToProperty,
+  removeImageFromProperty,
+  updatePropertyAmenities,
+  updatePropertyFacilities,
+  updatePropertyRules,
+  updatePropertyRequireForBooker,
 };
