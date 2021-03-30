@@ -7,7 +7,11 @@ const { devError } = require("../Helpers/devError");
 const District = require("../models/district");
 const config = require("config");
 const moment = require("moment");
-const { vnDateRegex } = require("../Helpers/convertVietnameseStr");
+const {
+  vnDateRegex,
+  vietnameseRegexStr,
+} = require("../Helpers/convertVietnameseStr");
+const City = require("../models/city");
 
 const getListRentalType = (req, res) => {
   res.send([
@@ -602,6 +606,7 @@ const getListProperty = async (req, res) => {
     toDay,
   } = req.query;
   try {
+    if (!city) return generateMessage("City name is required", res);
     if (
       !isKeysTypeCorrect("string", {
         district,
@@ -614,6 +619,54 @@ const getListProperty = async (req, res) => {
     )
       return generateMessage("Invalid data type", res);
     if (!isValidGroup(group)) return generateMessage("Invalid group", res);
+
+    ///////////////////////////////////////////
+
+    const districtOptQuery = {
+      isActive: true,
+      name: { $regex: vietnameseRegexStr(district) },
+    };
+    if (!district) delete districtOptQuery.district;
+    const propertyOptQuery = {
+      group,
+      isActive: true,
+      isPublished: true,
+      rentalType,
+      amountOfGuest,
+    };
+    if (!rentalType) delete propertyOptQuery.rentalType;
+    if (!amountOfGuest && amountOfGuest !== 0)
+      delete propertyOptQuery.amountOfGuest;
+
+    const foundedCity = await City.findOne({
+      isActive: true,
+      name: { $regex: vietnameseRegexStr(city) },
+    }).populate({
+      path: "listOfDistricts",
+      match: { ...districtOptQuery },
+      select: "name listOfProperties",
+      populate: {
+        path: "listOfProperties",
+        match: { ...propertyOptQuery },
+        options: {
+          sort: {
+            "rating.totalReviews": "desc",
+            "rating.scores.final": "desc",
+          },
+        },
+        select:
+          "group listOfReservation rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds",
+        populate: {
+          path: "listOfReservation",
+          match: { isActive: true },
+          select: "startDate endDate -_id",
+        },
+      },
+    });
+    if (!foundedCity) return generateMessage("City does not exist", res);
+
+    ////////////////////////////////////////////////////
+
     const dateRegex = vnDateRegex();
     if (
       (fromDay || toDay) &&
@@ -623,24 +676,45 @@ const getListProperty = async (req, res) => {
         "Invalid date format. Only dd/MM/yyyy formats are accepted",
         res
       );
-    ///////////////////////////////////////////
 
-    // const result = moment("09/06/2001", "DD-MM-YYYY").isBetween(
+    // moment(fromDay, "DD-MM-YYYY").isBetween(
     //   moment("09/06/2001", "DD-MM-YYYY"),
     //   moment("11/06/2001", "DD-MM-YYYY"),
     // undefined,
     // "[]"
     // );
     const queryOpt = {
-      isActive: true,
+      city,
       district,
+      rentalType,
+      amountOfGuest,
+      fromDay,
+      toDay,
     };
 
-    const foundedProperty = await Property.find({ group, isActive: true })
-      .populate()
-      .select();
+    const foundedProperty = await Property.find({
+      group,
+      isActive: true,
+      isPublished: true,
+    })
+      .select(
+        "group rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds listOfReservation"
+      )
+      .populate({
+        path: "owner",
+        match: { isActive: true },
+        select: "username name email -_id",
+      })
+      .populate({ path: "listOfReservation" });
+
+    //////////////////////////////////////////////
+
     res.send(foundedProperty);
   } catch (error) {
+    if (error.errors?.rentalType?.message)
+      return generateMessage(error.errors.rentalType.message, res);
+    if (error.errors?.group?.message)
+      return generateMessage(error.errors.group.message, res);
     devError(error, res);
   }
 };

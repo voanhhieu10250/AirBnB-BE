@@ -82,7 +82,7 @@ const getCityDetails = async (req, res) => {
   try {
     const populateOpt = {
       path: "listOfDistricts",
-      match: { code: districtCode },
+      match: { code: districtCode, isActive: true },
       select: "code name listOfProperties -_id",
       populate: {
         path: "listOfProperties",
@@ -96,7 +96,7 @@ const getCityDetails = async (req, res) => {
         },
         perDocumentLimit: pageSizePerDistrict,
         select:
-          "rentalType address images title pricePerDay coords rating amountOfGuest roomsAndBeds",
+          "group rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds",
       },
     };
     if (!districtCode) delete populateOpt.match;

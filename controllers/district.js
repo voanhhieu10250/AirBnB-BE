@@ -69,7 +69,7 @@ const getDistrictDetails = async (req, res) => {
         sort: { "rating.totalReviews": "desc", "rating.scores.final": "desc" },
       },
       select:
-        "rentalType address images title pricePerDay coords rating amountOfGuest roomsAndBeds",
+        "group rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds",
     });
     if (!foundedDistrict)
       return generateMessage("District does not exist", res);
@@ -109,7 +109,7 @@ const getDistrictDetailsPerPage = async (req, res) => {
       },
       perDocumentLimit: pageSize,
       select:
-        "rentalType address images title pricePerDay coords rating amountOfGuest roomsAndBeds",
+        "group rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds",
     });
     if (!foundedDistrict)
       return generateMessage("District does not exist", res);
