@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const moment = require("moment");
 
 const reviewSchema = new mongoose.Schema(
   {
@@ -24,7 +25,13 @@ const reviewSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
+reviewSchema.methods.toJSON = function () {
+  const review = this.toObject();
+  delete review.isActive;
+  review.createdAt = moment(review.createdAt).utc().format();
+  review.updatedAt = moment(review.updatedAt).utc().format();
+  return review;
+};
 const Review = mongoose.model("Review", reviewSchema);
 
 module.exports = Review;

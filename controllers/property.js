@@ -2,12 +2,12 @@ const getEmptyKeys = require("../Helpers/getEmptyKeys");
 const generateMessage = require("../Helpers/generateMessage");
 const { Property } = require("../models/property");
 const isKeysTypeCorrect = require("../Helpers/isKeysTypeCorrect");
-const User = require("../models/user");
 const isValidGroup = require("../Helpers/validateGroup");
 const { devError } = require("../Helpers/devError");
-const City = require("../models/city");
 const District = require("../models/district");
 const config = require("config");
+const moment = require("moment");
+const { vnDateRegex } = require("../Helpers/convertVietnameseStr");
 
 const getListRentalType = (req, res) => {
   res.send([
@@ -131,7 +131,7 @@ const createRentalProperty = async (req, res) => {
 const getPropertyInfo = async (req, res) => {
   const { id } = req.query;
   try {
-    if (!id) return generateMessage("Property id is  required", res);
+    if (!id) return generateMessage("Property id is required", res);
     const property = await Property.findOne({
       _id: id,
       isActive: true,
@@ -511,11 +511,141 @@ const updatePropertyRequireForBooker = async (req, res) => {
   }
 };
 
-const updatePropertyNoticeAbout = async (req, res) => {};
+const updatePropertyNoticeAbout = async (req, res) => {
+  const {
+    propertyId,
+    stairs,
+    noise,
+    petInTheHouse,
+    parkingSpace,
+    sharedSpace,
+    cameras,
+  } = req.body;
+  try {
+    if (!propertyId) return generateMessage("Property id is required", res);
+    const foundedProperty = await Property.findOne({
+      _id: propertyId,
+      isActive: true,
+    })
+      .select("noticeAbout owner")
+      .populate("owner", "username");
+    if (!foundedProperty)
+      return generateMessage("Property does not exist", res);
+    if (
+      foundedProperty.owner.username !== req.user.username &&
+      req.user.role !== "Admin"
+    )
+      return generateMessage(
+        "You don't have the permission do this functionality.",
+        res
+      );
+    const noticeAbout = {
+      stairs,
+      noise,
+      petInTheHouse,
+      parkingSpace,
+      sharedSpace,
+      cameras,
+    };
+    if (!isKeysTypeCorrect("string", noticeAbout))
+      return generateMessage("Invalid key type", res);
+    for (const key in noticeAbout) {
+      foundedProperty.noticeAbout[key] =
+        noticeAbout[key] ?? foundedProperty.noticeAbout[key];
+    }
+    const result = await foundedProperty.save();
+    res.send(result);
+  } catch (error) {
+    devError(error, res);
+  }
+};
 
-const deleteProperty = async (req, res) => {};
+const deleteProperty = async (req, res) => {
+  const { propertyId } = req.body;
+  try {
+    if (!propertyId) return generateMessage("Property id is required", res);
+    if (typeof propertyId !== "string")
+      return generateMessage("Invalid key type", res);
+    const foundedProperty = await Property.findOne({
+      _id: propertyId,
+      isActive: true,
+    })
+      .select("owner")
+      .populate("owner", "username");
+    if (!foundedProperty)
+      return generateMessage("Property does not exist", res);
+    if (
+      foundedProperty.owner.username !== req.user.username &&
+      req.user.role !== "Admin"
+    )
+      return generateMessage(
+        "You don't have the permission do this functionality.",
+        res
+      );
+    foundedProperty.isActive = false;
+    const result = await foundedProperty.save();
+    res.send(result);
+  } catch (error) {
+    devError(error, res);
+  }
+};
 
-const getListProperty = async (req, res) => {};
+const getListProperty = async (req, res) => {
+  // city is required
+  const {
+    city,
+    group = "gp01",
+    district,
+    rentalType,
+    amountOfGuest,
+    fromDay,
+    toDay,
+  } = req.query;
+  try {
+    if (
+      !isKeysTypeCorrect("string", {
+        district,
+        city,
+        rentalType,
+        fromDay,
+        toDay,
+      }) ||
+      !isKeysTypeCorrect("number", { amountOfGuest })
+    )
+      return generateMessage("Invalid data type", res);
+    if (!isValidGroup(group)) return generateMessage("Invalid group", res);
+    const dateRegex = vnDateRegex();
+    if (
+      (fromDay || toDay) &&
+      (!dateRegex.test(fromDay) || !dateRegex.test(toDay))
+    )
+      return generateMessage(
+        "Invalid date format. Only dd/MM/yyyy formats are accepted",
+        res
+      );
+    ///////////////////////////////////////////
+
+    // const result = moment("09/06/2001", "DD-MM-YYYY").isBetween(
+    //   moment("09/06/2001", "DD-MM-YYYY"),
+    //   moment("11/06/2001", "DD-MM-YYYY"),
+    // undefined,
+    // "[]"
+    // );
+    const queryOpt = {
+      isActive: true,
+      district,
+    };
+
+    const foundedProperty = await Property.find({ group, isActive: true })
+      .populate()
+      .select();
+    res.send(foundedProperty);
+  } catch (error) {
+    devError(error, res);
+  }
+};
+
+const getListPropertyPerPage = async (req, res) => {};
 
 module.exports = {
   createRentalProperty,
@@ -528,4 +658,6 @@ module.exports = {
   updatePropertyFacilities,
   updatePropertyRules,
   updatePropertyRequireForBooker,
+  updatePropertyNoticeAbout,
+  deleteProperty,
 };

@@ -10,6 +10,8 @@ const {
   updatePropertyFacilities,
   updatePropertyRules,
   updatePropertyRequireForBooker,
+  updatePropertyNoticeAbout,
+  deleteProperty,
 } = require("../controllers/property");
 const { auth } = require("../middleware/auth");
 
@@ -55,5 +57,13 @@ router.post(
   auth(),
   updatePropertyRequireForBooker
 );
+
+router.post(
+  "/QuanLyPhong/ThayDoiThongTinChuThich",
+  auth(),
+  updatePropertyNoticeAbout
+);
+
+router.delete("/QuanLyPhong/XoaPhong", auth(), deleteProperty);
 
 module.exports = router;

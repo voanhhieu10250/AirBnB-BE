@@ -43,4 +43,7 @@ const vietnameseRegexStr = (str, exact = false) => {
   return new RegExp(str, "i");
 };
 
-module.exports = { nonAccentVietnamese, vietnameseRegexStr };
+const vnDateRegex = () =>
+  /^([0-2][0-9]|(3)[0-1])(\/)(((0)[0-9])|((1)[0-2]))(\/)\d{4}$/i;
+
+module.exports = { nonAccentVietnamese, vietnameseRegexStr, vnDateRegex };

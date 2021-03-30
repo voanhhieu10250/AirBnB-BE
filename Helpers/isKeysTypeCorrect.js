@@ -11,7 +11,12 @@ const isKeysTypeCorrect = (keyType, object, strictModeForEmptyKey = false) => {
       if (!isNaN(Number(object[item])) && keyType === "number") continue;
       if (
         keyType === "boolean" &&
-        (object[item] === "true" || object[item] === "false")
+        (object[item] === "true" ||
+          object[item] === "false" ||
+          object[item] == "0" ||
+          object[item] == "1" ||
+          object[item] === "yes" ||
+          object[item] === "no")
       )
         continue;
       if (
@@ -29,7 +34,12 @@ const isKeysTypeCorrect = (keyType, object, strictModeForEmptyKey = false) => {
       if (!isNaN(Number(object[item])) && keyType[item] === "number") continue;
       if (
         keyType[item] === "boolean" &&
-        (object[item] === "true" || object[item] === "false")
+        (object[item] === "true" ||
+          object[item] === "false" ||
+          object[item] == "0" ||
+          object[item] == "1" ||
+          object[item] === "yes" ||
+          object[item] === "no")
       )
         continue;
       if (

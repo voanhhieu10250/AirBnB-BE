@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const moment = require("moment");
 
 const reservateSchema = new mongoose.Schema(
   {
@@ -13,11 +14,11 @@ const reservateSchema = new mongoose.Schema(
       required: true,
     },
     startDate: {
-      type: Date,
+      type: String,
       required: true,
     },
     endDate: {
-      type: Date,
+      type: String,
       required: true,
     },
     totalPrice: {
@@ -31,7 +32,13 @@ const reservateSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
+reservateSchema.methods.toJSON = function () {
+  const reservate = this.toObject();
+  delete reservate.isActive;
+  reservate.createdAt = moment(reservate.createdAt).utc().format();
+  reservate.updatedAt = moment(reservate.updatedAt).utc().format();
+  return reservate;
+};
 const Reservation = mongoose.model("Reservation", reservateSchema);
 
 module.exports = Reservation;

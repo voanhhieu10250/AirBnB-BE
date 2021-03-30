@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const moment = require("moment");
 
 const propertySchema = new mongoose.Schema(
   {
@@ -6,6 +7,7 @@ const propertySchema = new mongoose.Schema(
       type: String,
       default: "gp01",
       index: true,
+      lowercase: true,
       enum: [
         "gp00",
         "gp01",
@@ -42,9 +44,9 @@ const propertySchema = new mongoose.Schema(
       bathrooms: { type: Number, default: 1 },
     },
     amountOfGuest: { type: Number, default: 1 },
-    address: { type: String, required: true },
-    title: { type: String, required: true },
-    description: { type: String, default: null },
+    address: { type: String, required: true, trim: true },
+    title: { type: String, required: true, trim: true },
+    description: { type: String, default: null, trim: true },
     images: { type: [String], default: [] },
     amenities: {
       television: { type: Boolean, default: false },
@@ -75,8 +77,8 @@ const propertySchema = new mongoose.Schema(
       customRules: { type: [String], default: [] },
     },
     requireForBooker: {
-      checkInTime: { type: String, default: "3PM" },
-      checkOutTime: { type: String, default: "1PM" },
+      checkInTime: { type: String, default: "3PM", uppercase: true },
+      checkOutTime: { type: String, default: "1PM", uppercase: true },
       stayDays: {
         min: { type: Number, default: 0 },
         max: { type: Number, default: 0 },
@@ -85,16 +87,14 @@ const propertySchema = new mongoose.Schema(
       hasNoBadReview: { type: Boolean, default: false },
       customRequire: { type: [String], default: [] },
     },
-    /////////////////////////////////
     noticeAbout: {
-      stairs: { type: String, default: null },
-      noise: { type: String, default: null },
-      petInTheHouse: { type: String, default: null },
-      parkingSpace: { type: String, default: null },
-      sharedSpace: { type: String, default: null },
-      cameras: { type: String, default: null },
+      stairs: { type: String, default: null, trim: true },
+      noise: { type: String, default: null, trim: true },
+      petInTheHouse: { type: String, default: null, trim: true },
+      parkingSpace: { type: String, default: null, trim: true },
+      sharedSpace: { type: String, default: null, trim: true },
+      cameras: { type: String, default: null, trim: true },
     },
-    ////////////////////////////////
     pricePerDay: { type: Number, required: true },
     serviceFee: { type: Number, default: null },
     coords: {
@@ -116,18 +116,18 @@ const propertySchema = new mongoose.Schema(
         location: { type: Number, default: 0 },
         checkIn: { type: Number, default: 0 },
       },
+      totalReviews: {
+        type: Number,
+        default: function () {
+          return this.rating.reviews.length;
+        },
+      },
       reviews: [
         {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Review",
         },
       ],
-      totalReviews: {
-        type: Number,
-        default: function () {
-          return this.reviews.length;
-        },
-      },
     },
     isPublished: {
       type: Boolean,
@@ -144,13 +144,10 @@ const propertySchema = new mongoose.Schema(
 propertySchema.methods.toJSON = function () {
   const property = this.toObject();
   delete property.isActive;
+  property.createdAt = moment(property.createdAt).utc().format();
+  property.updatedAt = moment(property.updatedAt).utc().format();
   return property;
 };
-
-propertySchema.pre("save", async function (next) {
-  this.group = this.group.toLowerCase();
-  next();
-});
 
 const Property = mongoose.model("Property", propertySchema);
 

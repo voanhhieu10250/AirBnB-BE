@@ -1,3 +1,4 @@
+const moment = require("moment");
 const mongoose = require("mongoose");
 // const bcrypt = require("bcryptjs");
 
@@ -73,6 +74,8 @@ userSchema.methods.toJSON = function () {
   // delete user.password;
   delete user.tokens;
   delete user.isActive;
+  user.createdAt = moment(user.createdAt).utc().format();
+  user.updatedAt = moment(user.updatedAt).utc().format();
   return user;
 };
 
