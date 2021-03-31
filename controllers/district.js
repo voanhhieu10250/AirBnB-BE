@@ -173,6 +173,10 @@ const deleteDistrict = async (req, res) => {
     const foundedDistrict = await District.findOne({
       code: districtCode,
       isActive: true,
+    }).populate({
+      path: "listOfProperties",
+      match: { isActive: true },
+      select: "_id",
     });
     if (!foundedDistrict)
       return generateMessage("District does not exist", res);

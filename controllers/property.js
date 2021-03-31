@@ -78,7 +78,7 @@ const createRentalProperty = async (req, res) => {
     const foundedDistrict = await District.findOne({
       code: districtCode,
       isActive: true,
-    }).select("name listOfProperties");
+    }).select("name listOfProperties cityCode");
     if (!foundedDistrict)
       return generateMessage("District does not exist", res);
     const foundedProperty = await Property.findOne({
@@ -595,38 +595,43 @@ const deleteProperty = async (req, res) => {
 };
 
 const getListProperty = async (req, res) => {
-  // city is required
+  // city and district are required
   const {
     city,
     group = "gp01",
     district,
     rentalType,
     amountOfGuest,
-    fromDay,
-    toDay,
+    fromDate,
+    toDate,
   } = req.query;
   try {
-    if (!city) return generateMessage("City name is required", res);
+    if (!city || !district)
+      return generateMessage("City name and district name are required", res);
     if (
       !isKeysTypeCorrect("string", {
         district,
         city,
         rentalType,
-        fromDay,
-        toDay,
+        fromDate,
+        toDate,
       }) ||
       !isKeysTypeCorrect("number", { amountOfGuest })
     )
       return generateMessage("Invalid data type", res);
     if (!isValidGroup(group)) return generateMessage("Invalid group", res);
 
+    const dateRegex = vnDateRegex();
+    if (
+      (fromDate || toDate) &&
+      (!dateRegex.test(fromDate) || !dateRegex.test(toDate))
+    )
+      return generateMessage(
+        "Invalid date format. Only dd/MM/yyyy formats are accepted",
+        res
+      );
     ///////////////////////////////////////////
 
-    const districtOptQuery = {
-      isActive: true,
-      name: { $regex: vietnameseRegexStr(district) },
-    };
-    if (!district) delete districtOptQuery.district;
     const propertyOptQuery = {
       group,
       isActive: true,
@@ -641,11 +646,17 @@ const getListProperty = async (req, res) => {
     const foundedCity = await City.findOne({
       isActive: true,
       name: { $regex: vietnameseRegexStr(city) },
-    }).populate({
-      path: "listOfDistricts",
-      match: { ...districtOptQuery },
-      select: "name listOfProperties",
-      populate: {
+    }).select("name code");
+    if (!foundedCity)
+      return generateMessage("Cannot find the city you provided", res);
+
+    const foundedDistrict = await District.findOne({
+      isActive: true,
+      cityCode: foundedCity.code,
+      name: { $regex: vietnameseRegexStr(district) },
+    })
+      .select("name code listOfProperties")
+      .populate({
         path: "listOfProperties",
         match: { ...propertyOptQuery },
         options: {
@@ -661,51 +672,48 @@ const getListProperty = async (req, res) => {
           match: { isActive: true },
           select: "startDate endDate -_id",
         },
-      },
-    });
-    if (!foundedCity) return generateMessage("City does not exist", res);
-
+      });
+    if (!foundedDistrict)
+      return generateMessage("Cannot find the district you provided", res);
     ////////////////////////////////////////////////////
 
-    const dateRegex = vnDateRegex();
     if (
-      (fromDay || toDay) &&
-      (!dateRegex.test(fromDay) || !dateRegex.test(toDay))
+      fromDate &&
+      toDate &&
+      moment(fromDate, "DD-MM-YYYY").isAfter(moment(toDate, "DD-MM-YYYY"))
     )
-      return generateMessage(
-        "Invalid date format. Only dd/MM/yyyy formats are accepted",
-        res
-      );
+      return generateMessage("'fromDate' cannot be later than 'toDate'", res);
+    if (fromDate || toDate) {
+      const isDateBetween = (date, startDate, endDate) =>
+        moment(date, "DD-MM-YYYY").isBetween(
+          moment(startDate, "DD-MM-YYYY"),
+          moment(endDate, "DD-MM-YYYY"),
+          undefined,
+          "[]"
+        );
+      foundedDistrict.listOfProperties.forEach((property) => {
+        property.listOfReservation.map((item) => {
+          const inavailFromDate = isDateBetween(
+            fromDate,
+            item.startDate,
+            item.endDate
+          );
+          const inavailToDate = isDateBetween(
+            toDate,
+            item.startDate,
+            item.endDate
+          );
 
-    // moment(fromDay, "DD-MM-YYYY").isBetween(
-    //   moment("09/06/2001", "DD-MM-YYYY"),
-    //   moment("11/06/2001", "DD-MM-YYYY"),
-    // undefined,
-    // "[]"
-    // );
-    const queryOpt = {
-      city,
-      district,
-      rentalType,
-      amountOfGuest,
-      fromDay,
-      toDay,
-    };
-
-    const foundedProperty = await Property.find({
-      group,
-      isActive: true,
-      isPublished: true,
-    })
-      .select(
-        "group rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds listOfReservation"
-      )
-      .populate({
-        path: "owner",
-        match: { isActive: true },
-        select: "username name email -_id",
-      })
-      .populate({ path: "listOfReservation" });
+          if (inavailFromDate || inavailToDate) return;
+        });
+      });
+    }
+    moment(fromDate, "DD-MM-YYYY").isBetween(
+      moment("09/06/2001", "DD-MM-YYYY"),
+      moment("11/06/2001", "DD-MM-YYYY"),
+      undefined,
+      "[]"
+    );
 
     //////////////////////////////////////////////
 
