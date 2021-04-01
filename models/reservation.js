@@ -19,7 +19,7 @@ const reservateSchema = new mongoose.Schema(
     },
     endDate: {
       type: String,
-      required: true,
+      default: null,
     },
     totalPrice: {
       type: Number,

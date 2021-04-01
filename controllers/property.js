@@ -676,7 +676,11 @@ const getListProperty = async (req, res) => {
     if (!foundedDistrict)
       return generateMessage("Cannot find the district you provided", res);
     ////////////////////////////////////////////////////
-
+    if (!fromDate && toDate)
+      return generateMessage(
+        "'toDate' need to go with 'fromDate'. Please enter 'fromDate'.",
+        res
+      );
     if (
       fromDate &&
       toDate &&
@@ -691,8 +695,9 @@ const getListProperty = async (req, res) => {
           undefined,
           "[]"
         );
-      foundedDistrict.listOfProperties.forEach((property) => {
-        property.listOfReservation.map((item) => {
+      foundedDistrict.listOfProperties.forEach(({ listOfReservation }) => {
+        let reservate = null;
+        for (const item of listOfReservation) {
           const inavailFromDate = isDateBetween(
             fromDate,
             item.startDate,
@@ -703,17 +708,19 @@ const getListProperty = async (req, res) => {
             item.startDate,
             item.endDate
           );
-
-          if (inavailFromDate || inavailToDate) return;
-        });
+          const overBookedDays =
+            isDateBetween(item.startDate, fromDate, toDate) ||
+            (moment(item.startDate, "DD-MM-YYYY").isBefore(fromDate) &&
+              (isDateBetween(item.endDate, fromDate, toDate) || !item.endDate));
+          if (inavailFromDate || inavailToDate || overBookedDays) {
+            reservate = item;
+            break;
+          }
+        }
+        // const index = listOfReservation.indexOf()
+        // if (reservate) foundedDistrict.listOfProperties.
       });
     }
-    moment(fromDate, "DD-MM-YYYY").isBetween(
-      moment("09/06/2001", "DD-MM-YYYY"),
-      moment("11/06/2001", "DD-MM-YYYY"),
-      undefined,
-      "[]"
-    );
 
     //////////////////////////////////////////////
 
