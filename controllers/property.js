@@ -597,21 +597,21 @@ const deleteProperty = async (req, res) => {
 const getListProperty = async (req, res) => {
   // city and district are required
   const {
-    city,
+    cityName,
     group = "gp01",
-    district,
+    districtName,
     rentalType,
     amountOfGuest,
     fromDate,
     toDate,
   } = req.query;
   try {
-    if (!city || !district)
+    if (!cityName || !districtName)
       return generateMessage("City name and district name are required", res);
     if (
       !isKeysTypeCorrect("string", {
-        district,
-        city,
+        district: districtName,
+        city: cityName,
         rentalType,
         fromDate,
         toDate,
@@ -645,7 +645,7 @@ const getListProperty = async (req, res) => {
 
     const foundedCity = await City.findOne({
       isActive: true,
-      name: { $regex: vietnameseRegexStr(city) },
+      name: { $regex: vietnameseRegexStr(cityName) },
     }).select("name code");
     if (!foundedCity)
       return generateMessage("Cannot find the city you provided", res);
@@ -653,7 +653,7 @@ const getListProperty = async (req, res) => {
     const foundedDistrict = await District.findOne({
       isActive: true,
       cityCode: foundedCity.code,
-      name: { $regex: vietnameseRegexStr(district) },
+      name: { $regex: vietnameseRegexStr(districtName) },
     })
       .select("name code listOfProperties")
       .populate({
@@ -665,8 +665,7 @@ const getListProperty = async (req, res) => {
             "rating.scores.final": "desc",
           },
         },
-        select:
-          "group listOfReservation rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds",
+        select: "listOfReservation",
         populate: {
           path: "listOfReservation",
           match: { isActive: true },
@@ -695,8 +694,8 @@ const getListProperty = async (req, res) => {
           undefined,
           "[]"
         );
-      foundedDistrict.listOfProperties.forEach(({ listOfReservation }) => {
-        let reservate = null;
+      const unmatchedProperties = [];
+      foundedDistrict.listOfProperties.forEach(({ _id, listOfReservation }) => {
         for (const item of listOfReservation) {
           const inavailFromDate = isDateBetween(
             fromDate,
@@ -713,18 +712,26 @@ const getListProperty = async (req, res) => {
             (moment(item.startDate, "DD-MM-YYYY").isBefore(fromDate) &&
               (isDateBetween(item.endDate, fromDate, toDate) || !item.endDate));
           if (inavailFromDate || inavailToDate || overBookedDays) {
-            reservate = item;
+            unmatchedProperties.push(_id);
             break;
           }
         }
-        // const index = listOfReservation.indexOf()
-        // if (reservate) foundedDistrict.listOfProperties.
       });
+      const filteredProperties = await Property.find({
+        _id: { $nin: unmatchedProperties },
+        ...propertyOptQuery,
+      }).select(
+        "group listOfReservation rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds"
+      );
+      return res.send(filteredProperties);
+    } else {
+      const foundedCities = await Property.find({
+        ...propertyOptQuery,
+      }).select(
+        "group listOfReservation rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds"
+      );
+      return res.send(foundedCities);
     }
-
-    //////////////////////////////////////////////
-
-    res.send(foundedProperty);
   } catch (error) {
     if (error.errors?.rentalType?.message)
       return generateMessage(error.errors.rentalType.message, res);
@@ -734,7 +741,184 @@ const getListProperty = async (req, res) => {
   }
 };
 
-const getListPropertyPerPage = async (req, res) => {};
+const getListPropertyPerPage = async (req, res) => {
+  // city and district are required
+  const {
+    cityName,
+    group = "gp01",
+    districtName,
+    rentalType,
+    amountOfGuest,
+    fromDate,
+    toDate,
+    currentPage = 1,
+    pageSize = 2,
+  } = req.query;
+  try {
+    if (!cityName || !districtName)
+      return generateMessage("City name and district name are required", res);
+    if (
+      !isKeysTypeCorrect("string", {
+        district: districtName,
+        city: cityName,
+        rentalType,
+        fromDate,
+        toDate,
+      }) ||
+      !isKeysTypeCorrect("number", { amountOfGuest, currentPage, pageSize })
+    )
+      return generateMessage("Invalid data type", res);
+    if (!isValidGroup(group)) return generateMessage("Invalid group", res);
+
+    const dateRegex = vnDateRegex();
+    if (
+      (fromDate || toDate) &&
+      (!dateRegex.test(fromDate) || !dateRegex.test(toDate))
+    )
+      return generateMessage(
+        "Invalid date format. Only dd/MM/yyyy formats are accepted",
+        res
+      );
+
+    const propertyOptQuery = {
+      group,
+      isActive: true,
+      isPublished: true,
+      rentalType,
+      amountOfGuest,
+    };
+    if (!rentalType) delete propertyOptQuery.rentalType;
+    if (!amountOfGuest && amountOfGuest !== 0)
+      delete propertyOptQuery.amountOfGuest;
+
+    const foundedCity = await City.findOne({
+      isActive: true,
+      name: { $regex: vietnameseRegexStr(cityName) },
+    }).select("name code");
+    if (!foundedCity)
+      return generateMessage("Cannot find the city you provided", res);
+
+    const foundedDistrict = await District.findOne({
+      isActive: true,
+      cityCode: foundedCity.code,
+      name: { $regex: vietnameseRegexStr(districtName) },
+    })
+      .select("name code listOfProperties")
+      .populate({
+        path: "listOfProperties",
+        match: { ...propertyOptQuery },
+        options: {
+          sort: {
+            "rating.totalReviews": "desc",
+            "rating.scores.final": "desc",
+          },
+        },
+        select: "listOfReservation",
+        populate: {
+          path: "listOfReservation",
+          match: { isActive: true },
+          select: "startDate endDate -_id",
+        },
+      });
+    if (!foundedDistrict)
+      return generateMessage("Cannot find the district you provided", res);
+    if (!fromDate && toDate)
+      return generateMessage(
+        "'toDate' need to go with 'fromDate'. Please enter 'fromDate'.",
+        res
+      );
+    if (
+      fromDate &&
+      toDate &&
+      moment(fromDate, "DD-MM-YYYY").isAfter(moment(toDate, "DD-MM-YYYY"))
+    )
+      return generateMessage("'fromDate' cannot be later than 'toDate'", res);
+    if (fromDate || toDate) {
+      const isDateBetween = (date, startDate, endDate) =>
+        moment(date, "DD-MM-YYYY").isBetween(
+          moment(startDate, "DD-MM-YYYY"),
+          moment(endDate, "DD-MM-YYYY"),
+          undefined,
+          "[]"
+        );
+      const unmatchedProperties = [];
+      foundedDistrict.listOfProperties.forEach(({ _id, listOfReservation }) => {
+        for (const item of listOfReservation) {
+          const inavailFromDate = isDateBetween(
+            fromDate,
+            item.startDate,
+            item.endDate
+          );
+          const inavailToDate = isDateBetween(
+            toDate,
+            item.startDate,
+            item.endDate
+          );
+          const overBookedDays =
+            isDateBetween(item.startDate, fromDate, toDate) ||
+            (moment(item.startDate, "DD-MM-YYYY").isBefore(fromDate) &&
+              (isDateBetween(item.endDate, fromDate, toDate) || !item.endDate));
+          if (inavailFromDate || inavailToDate || overBookedDays) {
+            unmatchedProperties.push(_id);
+            break;
+          }
+        }
+      });
+      const filteredProperties = await Property.find({
+        _id: { $nin: unmatchedProperties },
+        ...propertyOptQuery,
+      })
+        .skip((currentPage - 1) * pageSize)
+        .limit(pageSize)
+        .select(
+          "group listOfReservation rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds"
+        );
+      const totalCount = await Property.find({
+        ...propertyOptQuery,
+      }).countDocuments();
+      const totalPages =
+        filteredProperties.length < pageSize
+          ? 1
+          : Math.ceil(filteredProperties.length / pageSize);
+      return res.send({
+        currentPage,
+        totalPages,
+        count: filteredProperties.length,
+        totalCount,
+        listProperties: foundedCities,
+      });
+    } else {
+      const foundedProperty = await Property.find({
+        ...propertyOptQuery,
+      })
+        .skip((currentPage - 1) * pageSize)
+        .limit(pageSize)
+        .select(
+          "group listOfReservation rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds"
+        );
+      const totalCount = await Property.find({
+        ...propertyOptQuery,
+      }).countDocuments();
+      const totalPages =
+        foundedProperty.length < pageSize
+          ? 1
+          : Math.ceil(foundedProperty.length / pageSize);
+      return res.send({
+        currentPage,
+        totalPages,
+        count: foundedProperty.length,
+        totalCount,
+        listProperties: foundedProperty,
+      });
+    }
+  } catch (error) {
+    if (error.errors?.rentalType?.message)
+      return generateMessage(error.errors.rentalType.message, res);
+    if (error.errors?.group?.message)
+      return generateMessage(error.errors.group.message, res);
+    devError(error, res);
+  }
+};
 
 module.exports = {
   createRentalProperty,
@@ -749,4 +933,6 @@ module.exports = {
   updatePropertyRequireForBooker,
   updatePropertyNoticeAbout,
   deleteProperty,
+  getListProperty,
+  getListPropertyPerPage,
 };

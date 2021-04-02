@@ -12,6 +12,8 @@ const {
   updatePropertyRequireForBooker,
   updatePropertyNoticeAbout,
   deleteProperty,
+  getListProperty,
+  getListPropertyPerPage,
 } = require("../controllers/property");
 const { auth } = require("../middleware/auth");
 
@@ -65,5 +67,12 @@ router.post(
 );
 
 router.delete("/QuanLyPhong/XoaPhong", auth(), deleteProperty);
+
+router.get("/QuanLyPhong/LayThongTinPhongTheoDiaDiem", getListProperty);
+
+router.get(
+  "/QuanLyPhong/LayThongTinPhongTheoDiaDiemPhanTrang",
+  getListPropertyPerPage
+);
 
 module.exports = router;

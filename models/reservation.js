@@ -34,7 +34,7 @@ const reservateSchema = new mongoose.Schema(
 );
 reservateSchema.methods.toJSON = function () {
   const reservate = this.toObject();
-  delete reservate.isActive;
+  // delete reservate.isActive;
   reservate.createdAt = moment(reservate.createdAt).utc().format();
   reservate.updatedAt = moment(reservate.updatedAt).utc().format();
   return reservate;
