@@ -118,9 +118,7 @@ const propertySchema = new mongoose.Schema(
       },
       totalReviews: {
         type: Number,
-        default: function () {
-          return this.rating.reviews.length;
-        },
+        default: 0,
       },
       reviews: [
         {
