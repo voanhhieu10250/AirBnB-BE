@@ -65,13 +65,14 @@ const createReservation = async (req, res) => {
         "This date has already been booked, please select another date.",
         res
       );
-    const totalPrice =
-      foundedProperty.serviceFee +
-      foundedProperty.pricePerDay *
-        moment(endDate, "DD-MM-YYYY").diff(
-          moment(startDate, "DD-MM-YYYY"),
-          "days"
-        );
+    const totalPrice = endDate
+      ? foundedProperty.serviceFee +
+        foundedProperty.pricePerDay *
+          moment(endDate, "DD-MM-YYYY").diff(
+            moment(startDate, "DD-MM-YYYY"),
+            "days"
+          )
+      : null;
     const newReservation = new Reservation({
       booker: req.user._id,
       property: propertyId,
@@ -112,7 +113,7 @@ const reservationDetails = async (req, res) => {
   }
 };
 
-const updateReservationDates = async (req, res) => {
+const updateReservation = async (req, res) => {
   const { reservationId, startDate, endDate, isActive } = req.body;
   try {
     if (!reservationId)
@@ -126,20 +127,61 @@ const updateReservationDates = async (req, res) => {
         "Invalid date format. Only dd/MM/yyyy formats are accepted",
         res
       );
+
     const foundedReservation = await Reservation.findOne({ _id: reservationId })
       .populate("booker", "username")
       .populate({
         path: "property",
-        select: "owner",
-        populate: { path: "owner", select: "username" },
+        select: "owner listOfReservation",
+        populate: {
+          path: "owner listOfReservation",
+          match: { isActive: true },
+          select: "username startDate endDate",
+        },
       });
     if (!foundedReservation)
       return generateMessage("This reservation does not exist", res);
+
     if (
       req.user.username !== foundedReservation.booker.username &&
       req.user.username !== foundedReservation.property.owner.username
     )
       return generateMessage("You are not authorized", res);
+
+    const isDateBetween = (date, startDate, endDate) =>
+      moment(date, "DD-MM-YYYY").isBetween(
+        moment(startDate, "DD-MM-YYYY"),
+        moment(endDate, "DD-MM-YYYY"),
+        undefined,
+        "[]"
+      );
+    const unmatchedProperties = null;
+    for (const item of foundedReservation.property.listOfReservation) {
+      const inavailFromDate = isDateBetween(
+        startDate,
+        item.startDate,
+        item.endDate
+      );
+      const inavailToDate = isDateBetween(
+        endDate,
+        item.startDate,
+        item.endDate
+      );
+      const overBookedDays =
+        isDateBetween(item.startDate, fromDate, toDate) ||
+        (moment(item.startDate, "DD-MM-YYYY").isBefore(fromDate) &&
+          (isDateBetween(item.endDate, fromDate, toDate) || !item.endDate));
+      if (inavailFromDate || inavailToDate || overBookedDays) {
+        unmatchedProperties = item;
+        break;
+      }
+    }
+    if (unmatchedProperties)
+      return generateMessage(
+        "This date has already been booked, please select another date.",
+        res
+      );
+
     foundedReservation.startDate = startDate || foundedReservation.startDate;
     foundedReservation.endDate = endDate || foundedReservation.endDate;
     foundedReservation.isActive = isActive || foundedReservation.isActive;
@@ -173,6 +215,8 @@ const declineReservationRequest = async (req, res) => {
     )
       return generateMessage("You are not authorized", res);
     result.isActive = false;
+    await result.save();
+    res.send({ message: "Declined successfully." });
   } catch (error) {
     devError(error, res);
   }
@@ -181,6 +225,6 @@ const declineReservationRequest = async (req, res) => {
 module.exports = {
   createReservation,
   reservationDetails,
-  updateReservationDates,
+  updateReservation,
   declineReservationRequest,
 };

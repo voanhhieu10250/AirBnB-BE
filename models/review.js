@@ -7,6 +7,10 @@ const reviewSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    property: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Property",
+    },
     rating: {
       cleanliness: { type: Number, default: 0 },
       accuracy: { type: Number, default: 0 },
@@ -28,6 +32,7 @@ const reviewSchema = new mongoose.Schema(
 reviewSchema.methods.toJSON = function () {
   const review = this.toObject();
   delete review.isActive;
+  delete review.property;
   review.createdAt = moment(review.createdAt).utc().format();
   review.updatedAt = moment(review.updatedAt).utc().format();
   return review;

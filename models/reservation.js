@@ -23,7 +23,7 @@ const reservateSchema = new mongoose.Schema(
     },
     totalPrice: {
       type: Number,
-      required: true,
+      default: null,
     },
     isActive: {
       type: Boolean,
