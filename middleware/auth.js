@@ -51,8 +51,7 @@ const auth = (roles) => async (req, res, next) => {
       return generateMessage(
         "Bạn không có quyền thực hiện chức năng này.",
         res,
-        403,
-        { error }
+        403
       );
     return devError(error, res);
   }

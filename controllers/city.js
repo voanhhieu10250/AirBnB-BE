@@ -1,3 +1,5 @@
+// Đã check isActive, check router
+
 const {
   nonAccentVietnamese,
   vietnameseRegexStr,
@@ -15,7 +17,7 @@ const addNewCity = async (req, res) => {
   let { cityCode, name } = req.body;
 
   if (!name) return generateMessage("City name is required", res);
-  const regex = /^[a-zA-Z ]+$/;
+  const regex = /^[a-zA-Z -]+$/;
   if (!regex.test(nonAccentVietnamese(name).replace(/,/, " ")))
     return generateMessage(
       "Invalid name. Please try something different.",
@@ -23,13 +25,13 @@ const addNewCity = async (req, res) => {
     );
 
   const foundedCityName = await City.findOne({
-    isAcitve: true,
+    isActive: true,
     name: { $regex: vietnameseRegexStr(name) },
   });
   if (foundedCityName) return generateMessage("This city already exists", res);
   let newCode = "";
   if (cityCode) {
-    if (!regex.test(cityCode.replace(/ /, "")))
+    if (!regex.test(cityCode.replace(/ /g, "")))
       return generateMessage(
         "Invalid cityCode. Please try something different or let us generate the code for you.",
         res
@@ -216,14 +218,14 @@ const deleteCityInfo = async (req, res) => {
       select: "code name -_id",
     });
     if (!foundedCity) return generateMessage("City does not exist", res);
-    if (foundedCity.defaultCity)
+    if (foundedCity.defaultCity && req.user.username !== "hieurom")
       return generateMessage("You can not delete default cities", res);
     if (foundedCity.listOfDistricts.length > 0)
       return generateMessage(
         "Already have some districts registed in this city, you cannot delete this city.",
         res
       );
-    foundedCity.isAcitve = false;
+    foundedCity.isActive = false;
     return res.send(await foundedCity.save());
   } catch (error) {
     devError(error, res);

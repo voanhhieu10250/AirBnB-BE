@@ -29,7 +29,7 @@ const citySchema = new mongoose.Schema({
 citySchema.methods.toJSON = function () {
   const city = this.toObject();
   delete city._id;
-  delete city.defaultCity;
+  // delete city.defaultCity;
   delete city.isActive;
   return city;
 };

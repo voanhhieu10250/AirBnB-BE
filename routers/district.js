@@ -18,15 +18,15 @@ router.get(
   getDistrictDetailsPerPage
 );
 
-router.post(
+router.put(
   "/QuanLyQuanHuyen/ThayDoiThongTinQuanHuyen",
   auth(["Admin"]),
   updateDistrictInfo
 );
 
 router.delete(
-  "QuanLyQuanHuyen/XoaThongTinQuanHuyen",
-  auth("Admin"),
+  "/QuanLyQuanHuyen/XoaThongTinQuanHuyen",
+  auth(["Admin"]),
   deleteDistrict
 );
 

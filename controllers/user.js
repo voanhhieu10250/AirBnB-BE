@@ -1,4 +1,7 @@
+// Đã check router
+
 const getEmptyKeys = require("../Helpers/getEmptyKeys");
+const fs = require("fs");
 const { devError } = require("../Helpers/devError");
 const generateMessage = require("../Helpers/generateMessage");
 const User = require("../models/user");
@@ -207,15 +210,24 @@ const userSignout = async (req, res) => {
 };
 
 const uploadAvatar = async (req, res) => {
-  req.user.avatar = `http://${config.get("hostUrl")}/image/${
-    req.file.filename
-  }`;
-  const user = await req.user.save();
+  const oldAvatar = req.user.avatar.slice(
+    req.user.avatar.indexOf("/image/") + 7
+  );
+  try {
+    if (oldAvatar && fs.existsSync(`./images/${oldAvatar}`))
+      fs.unlinkSync(`./images/${oldAvatar}`);
 
-  const result = user.toJSON();
-  delete result.password;
-
-  return res.send({ message: "Thêm avatar thành công", result });
+    req.user.avatar = `http://${config.get("hostUrl")}/image/${
+      req.file.filename
+    }`;
+    const { avatar, username, email, name } = await req.user.save();
+    return res.send({
+      message: "Thêm avatar thành công",
+      result: { avatar, username, email, name },
+    });
+  } catch (error) {
+    devError(error, res);
+  }
 };
 
 const getListRolesOfUser = async (req, res) => {
@@ -246,7 +258,7 @@ const getAllUser = async (req, res) => {
     res.send(users);
   } else {
     const users = await User.find({ group, isActive: true }).populate(
-      "wishList reviews hostedList bookedList"
+      "wishList rating.reviews hostedList bookedList"
     );
     res.send(users);
   }
@@ -291,8 +303,8 @@ const getUsersPerPage = async (req, res) => {
 
   res.send({
     currentPage,
-    count: listUser.length,
     totalPages,
+    count: listUser.length,
     totalCount,
     items: listUser,
   });
@@ -303,7 +315,8 @@ const updateUser = async (req, res) => {
   try {
     if (email) {
       const foundedEmail = await User.findOne({ email, isActive: true });
-      if (foundedEmail) return generateMessage("Email đã tồn tại", res);
+      if (foundedEmail && foundedEmail.username !== req.user.username)
+        return generateMessage("Email đã tồn tại", res);
     }
     req.user.phone = phone || req.user.phone;
     req.user.name = name || req.user.name;

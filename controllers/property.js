@@ -1,4 +1,7 @@
+// đã check isActive và router tới getListPropertyPerPage
+
 const getEmptyKeys = require("../Helpers/getEmptyKeys");
+const fs = require("fs");
 const generateMessage = require("../Helpers/generateMessage");
 const { Property } = require("../models/property");
 const isKeysTypeCorrect = require("../Helpers/isKeysTypeCorrect");
@@ -188,7 +191,7 @@ const updatePropertyFrontInfo = async (req, res) => {
         title,
         description,
       }) ||
-      isKeysTypeCorrect("number", {
+      !isKeysTypeCorrect("number", {
         amountOfGuest,
         pricePerDay,
         serviceFee,
@@ -196,14 +199,14 @@ const updatePropertyFrontInfo = async (req, res) => {
         bedrooms,
         bathrooms,
       }) ||
-      isKeysTypeCorrect("boolean", { isPublished })
+      !isKeysTypeCorrect("boolean", { isPublished })
     ) {
       return generateMessage("Invalid key type", res);
     }
     const foundedProperty = await Property.findOne({
       _id: propertyId,
       isActive: true,
-    }).populate("owner", "username");
+    }).populate("owner", "username -_id");
     if (!foundedProperty)
       return generateMessage("Property does not exist", res);
     if (
@@ -236,23 +239,33 @@ const updatePropertyFrontInfo = async (req, res) => {
 
 const addImagesToProperty = async (req, res) => {
   const { propertyId } = req.body;
+  const deleteImages = () => {
+    req.files.photos.forEach((item) => {
+      if (item && fs.existsSync(`./images/${item.filename}`))
+        fs.unlinkSync(`./images/${item.filename}`);
+    });
+  };
   try {
     const foundedProperty = await Property.findOne({
       _id: propertyId,
       isActive: true,
     })
       .select("owner images")
-      .populate("owner", "username");
-    if (!foundedProperty)
+      .populate("owner", "username -_id");
+    if (!foundedProperty) {
+      deleteImages();
       return generateMessage("Property does not exist", res);
+    }
     if (
       foundedProperty.owner.username !== req.user.username &&
       req.user.role !== "Admin"
-    )
+    ) {
+      deleteImages();
       return generateMessage(
         "You don't have the permission do this functionality.",
         res
       );
+    }
 
     const imagesName = req.files.photos.map(
       (item) => `http://${config.get("hostUrl")}/image/${item.filename}`
@@ -261,6 +274,7 @@ const addImagesToProperty = async (req, res) => {
     const result = await foundedProperty.save();
     res.send(result);
   } catch (error) {
+    deleteImages();
     devError(error, res);
   }
 };
@@ -276,7 +290,7 @@ const removeImageFromProperty = async (req, res) => {
       isActive: true,
     })
       .select("owner images")
-      .populate("owner", "username");
+      .populate("owner", "username -_id");
     if (!foundedProperty)
       return generateMessage("Property does not exist", res);
     if (
@@ -293,6 +307,9 @@ const removeImageFromProperty = async (req, res) => {
     foundedProperty.images.splice(imageIndex, 1);
     const result = await foundedProperty.save();
     res.send(result);
+    const oldImage = imageLink.slice(imageLink.indexOf("/image/") + 7);
+    if (oldImage && fs.existsSync(`./images/${oldImage}`))
+      fs.unlinkSync(`./images/${oldImage}`);
   } catch (error) {
     devError(error, res);
   }
@@ -321,7 +338,7 @@ const updatePropertyAmenities = async (req, res) => {
       isActive: true,
     })
       .select("amenities owner")
-      .populate("owner", "username");
+      .populate("owner", "username -_id");
     if (!foundedProperty)
       return generateMessage("Property does not exist", res);
     if (
@@ -368,7 +385,7 @@ const updatePropertyFacilities = async (req, res) => {
       isActive: true,
     })
       .select("facilities owner")
-      .populate("owner", "username");
+      .populate("owner", "username -_id");
     if (!foundedProperty)
       return generateMessage("Property does not exist", res);
     if (
@@ -410,7 +427,7 @@ const updatePropertyRules = async (req, res) => {
       isActive: true,
     })
       .select("rules owner")
-      .populate("owner", "username");
+      .populate("owner", "username -_id");
     if (!foundedProperty)
       return generateMessage("Property does not exist", res);
     if (
@@ -429,7 +446,7 @@ const updatePropertyRules = async (req, res) => {
       suitableForChildren,
       customRules,
     };
-    if (!isKeysTypeCorrect("boolean", rules))
+    if (!isKeysTypeCorrect("boolean", { ...rules, customRules: undefined }))
       return generateMessage("Invalid key type", res);
     for (const key in rules) {
       foundedProperty.rules[key] = rules[key] ?? foundedProperty.rules[key];
@@ -459,7 +476,7 @@ const updatePropertyRequireForBooker = async (req, res) => {
       isActive: true,
     })
       .select("requireForBooker owner")
-      .populate("owner", "username");
+      .populate("owner", "username -_id");
     if (!foundedProperty)
       return generateMessage("Property does not exist", res);
     if (
@@ -532,7 +549,7 @@ const updatePropertyNoticeAbout = async (req, res) => {
       isActive: true,
     })
       .select("noticeAbout owner")
-      .populate("owner", "username");
+      .populate("owner", "username -_id");
     if (!foundedProperty)
       return generateMessage("Property does not exist", res);
     if (
@@ -630,10 +647,8 @@ const getListProperty = async (req, res) => {
         "Invalid date format. Only dd/MM/yyyy formats are accepted",
         res
       );
-    ///////////////////////////////////////////
-
     const propertyOptQuery = {
-      group,
+      group: group || "gp01",
       isActive: true,
       isPublished: true,
       rentalType,
@@ -674,19 +689,18 @@ const getListProperty = async (req, res) => {
       });
     if (!foundedDistrict)
       return generateMessage("Cannot find the district you provided", res);
-    ////////////////////////////////////////////////////
-    if (!fromDate && toDate)
-      return generateMessage(
-        "'toDate' need to go with 'fromDate'. Please enter 'fromDate'.",
-        res
-      );
-    if (
-      fromDate &&
-      toDate &&
-      moment(fromDate, "DD-MM-YYYY").isAfter(moment(toDate, "DD-MM-YYYY"))
-    )
-      return generateMessage("'fromDate' cannot be later than 'toDate'", res);
     if (fromDate || toDate) {
+      if (!fromDate && toDate)
+        return generateMessage(
+          "'toDate' need to go with 'fromDate'. Please enter 'fromDate'.",
+          res
+        );
+      if (
+        fromDate &&
+        toDate &&
+        moment(fromDate, "DD-MM-YYYY").isAfter(moment(toDate, "DD-MM-YYYY"))
+      )
+        return generateMessage("'fromDate' cannot be later than 'toDate'", res);
       const isDateBetween = (date, startDate, endDate) =>
         moment(date, "DD-MM-YYYY").isBetween(
           moment(startDate, "DD-MM-YYYY"),
@@ -725,12 +739,13 @@ const getListProperty = async (req, res) => {
       );
       return res.send(filteredProperties);
     } else {
-      const foundedCities = await Property.find({
+      console.log(propertyOptQuery);
+      const foundedProperty = await Property.find({
         ...propertyOptQuery,
       }).select(
         "group listOfReservation rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds"
       );
-      return res.send(foundedCities);
+      return res.send(foundedProperty);
     }
   } catch (error) {
     if (error.errors?.rentalType?.message)

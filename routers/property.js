@@ -16,6 +16,7 @@ const {
   getListPropertyPerPage,
 } = require("../controllers/property");
 const { auth } = require("../middleware/auth");
+const { upload, uploadCallBack } = require("../middleware/uploadFile");
 
 const router = express.Router();
 
@@ -25,7 +26,7 @@ router.post("/QuanLyPhong/TaoPhongChoThue", auth(), createRentalProperty);
 
 router.get("/QuanLyPhong/LayThongTinPhong", getPropertyInfo);
 
-router.post(
+router.put(
   "/QuanLyPhong/ThayDoiThongTinHienThiChung",
   auth(),
   updatePropertyFrontInfo
@@ -40,27 +41,27 @@ router.post(
 
 router.delete("/QuanLyPhong/XoaHinhAnhPhong", auth(), removeImageFromProperty);
 
-router.post(
+router.put(
   "/QuanLyPhong/ThayDoiThongTinTienIch",
   auth(),
   updatePropertyAmenities
 );
 
-router.post(
+router.put(
   "/QuanLyPhong/ThayDoiThongTinCoSoVatChat",
   auth(),
   updatePropertyFacilities
 );
 
-router.post("/QuanLyPhong/ThayDoiThongTinQuyDinh", auth(), updatePropertyRules);
+router.put("/QuanLyPhong/ThayDoiThongTinQuyDinh", auth(), updatePropertyRules);
 
-router.post(
+router.put(
   "/QuanLyPhong/ThayDoiYeuCauDoiVoiNguoiDung",
   auth(),
   updatePropertyRequireForBooker
 );
 
-router.post(
+router.put(
   "/QuanLyPhong/ThayDoiThongTinChuThich",
   auth(),
   updatePropertyNoticeAbout

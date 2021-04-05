@@ -4,6 +4,8 @@ const config = require("config");
 const bodyParser = require("body-parser");
 const uploadRouter = require("./routers/upload");
 const userRouter = require("./routers/user");
+const reviewRouter = require("./routers/review");
+const reservationRouter = require("./routers/reservation");
 const propertyRouter = require("./routers/property");
 const districtRouter = require("./routers/district");
 const cityRouter = require("./routers/city");
@@ -25,6 +27,10 @@ app.use("/image", express.static(imagesFolderPath));
 app.use(userRouter);
 
 app.use(uploadRouter);
+
+app.use(reviewRouter);
+
+app.use(reservationRouter);
 
 app.use(propertyRouter);
 

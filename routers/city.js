@@ -16,7 +16,7 @@ router.get("/QuanLyThanhPho/LayThongTinThanhPho", getCityDetails);
 
 router.get("/QuanLyThanhPho/LayDanhSachThanhPho", getListCity);
 
-router.post(
+router.put(
   "/QuanLyThanhPho/ThayDoiThongTinThanhPho",
   auth(["Admin"]),
   updateCityInfo

@@ -1,3 +1,5 @@
+// Đã check isActive, router
+
 const {
   vietnameseRegexStr,
   nonAccentVietnamese,
@@ -12,7 +14,7 @@ const District = require("../models/district");
 const { Property } = require("../models/property");
 
 const addNewDistrict = async (req, res) => {
-  const { cityCode, name } = req.query;
+  const { cityCode, name } = req.body;
   try {
     const emptyKeys = getEmptyKeys({ cityCode, name });
     if (emptyKeys.length > 0)
@@ -31,7 +33,7 @@ const addNewDistrict = async (req, res) => {
       );
     let tempDistrictCode = `${foundedCity.code}-${nonAccentVietnamese(name)
       .split(",")[0]
-      .replace(/ /, "")}`;
+      .replace(/ /g, "")}`;
     let n = 0;
     while (
       await District.findOne({ code: tempDistrictCode, isActive: true }).select(
