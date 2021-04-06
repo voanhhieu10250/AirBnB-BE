@@ -1,5 +1,2 @@
-Nhớ gom các câu thông báo vào chung 1 file constant.
-Fix lại các status res cho đúng với các trường hợp.
-Chuyển mọi message thành tiếng Anh hết.
-Thêm database, hình và tìm cách import ra file riêng
-Hỏi tìm hiểu swagger, hỏi anh Khải xem host ở đâu
+Thêm database, hình và export ra file riêng. Gửi anh Khải xem demo
+Vẽ lại database table, push lên heroku luôn

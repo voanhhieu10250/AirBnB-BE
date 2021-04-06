@@ -10,16 +10,18 @@ const isValidGroup = require("../Helpers/validateGroup");
 const City = require("../models/city");
 const District = require("../models/district");
 
-// Admin only
+//-----------------------------------------------------
+
 const addNewCity = async (req, res) => {
   let { cityCode, name } = req.body;
 
-  if (!name) return generateMessage("City name is required", res);
+  if (!name) return generateMessage("City name is required", res, 404);
   const regex = /^[a-zA-Z -]+$/;
   if (!regex.test(nonAccentVietnamese(name).replace(/,/, " ")))
     return generateMessage(
       "Invalid name. Please try something different.",
-      res
+      res,
+      406
     );
 
   const foundedCityName = await City.findOne({
@@ -32,7 +34,8 @@ const addNewCity = async (req, res) => {
     if (!regex.test(cityCode.replace(/ /g, "")))
       return generateMessage(
         "Invalid cityCode. Please try something different or let us generate the code for you.",
-        res
+        res,
+        406
       );
     const foundedCode = await City.findOne({
       isActive: true,
@@ -72,13 +75,13 @@ const getCityDetails = async (req, res) => {
   } = req.query;
   const emptyKeys = getEmptyKeys({ cityCode, group });
   if (emptyKeys.length > 0)
-    return generateMessage(`${emptyKeys[0]} is required`, res);
+    return generateMessage(`${emptyKeys[0]} is required`, res, 404);
   if (
     !isKeysTypeCorrect("string", { cityCode, group, districtCode }) ||
     !isKeysTypeCorrect("number", { pageSizePerDistrict })
   )
-    return generateMessage("Invalid key type", res);
-  if (!isValidGroup(group)) return generateMessage("Invalid group", res);
+    return generateMessage("Invalid key type", res, 406);
+  if (!isValidGroup(group)) return generateMessage("Invalid group", res, 406);
   try {
     const populateOpt = {
       path: "listOfDistricts",
@@ -109,7 +112,7 @@ const getCityDetails = async (req, res) => {
       isActive: true,
       code: cityCode,
     }).populate(populateOpt);
-    if (!foundedCity) return generateMessage("City is not exists", res);
+    if (!foundedCity) return generateMessage("City is not exists", res, 404);
     if (currentPagePerDistrict && pageSizePerDistrict)
       await foundedCity.listOfDistricts.forEach(async (district) => {
         const totalProperty = await District.findOne({
@@ -144,7 +147,7 @@ const getListCity = async (req, res) => {
   let { cityCode } = req.query;
   try {
     if (cityCode && typeof cityCode !== "string")
-      return generateMessage("Invalid code", res);
+      return generateMessage("Invalid code", res, 406);
     const findOpt = { isActive: true, code: cityCode };
     if (!cityCode) delete findOpt.code;
     const cities = await City.find(findOpt)
@@ -160,9 +163,9 @@ const getListCity = async (req, res) => {
 const updateCityInfo = async (req, res) => {
   const { cityCode, name, defaultCity } = req.body;
   try {
-    if (!cityCode) return generateMessage("City code is required", res);
+    if (!cityCode) return generateMessage("City code is required", res, 404);
     if (!isKeysTypeCorrect("string", { cityCode, name }))
-      return generateMessage("Invalid input type", res);
+      return generateMessage("Invalid input type", res, 406);
     const foundedCity = await City.findOne({
       isActive: true,
       code: cityCode,
@@ -170,7 +173,8 @@ const updateCityInfo = async (req, res) => {
     if (!foundedCity)
       return generateMessage(
         "Can not find city that matches the city code you provided",
-        res
+        res,
+        404
       );
     if (name) {
       const foundedCityName = await City.findOne({
@@ -182,14 +186,13 @@ const updateCityInfo = async (req, res) => {
     }
     if (req.user.username === "hieurom") {
       foundedCity.name = name || foundedCity.name;
-      // null or undefined will not set to the field
       foundedCity.defaultCity = defaultCity ?? foundedCity.defaultCity;
       const result = await foundedCity.save();
       result.toJSON();
       delete result.listOfDistricts;
       return res.send(result);
     } else if (foundedCity.defaultCity) {
-      return generateMessage("You can not edit default cities.", res);
+      return generateMessage("You can not edit a default city.", res, 403);
     } else {
       foundedCity.name = name || foundedCity.name;
       const result = await foundedCity.save();
@@ -206,7 +209,7 @@ const updateCityInfo = async (req, res) => {
 const deleteCityInfo = async (req, res) => {
   const { cityCode } = req.query;
   try {
-    if (!cityCode) return generateMessage("City code is required", res);
+    if (!cityCode) return generateMessage("City code is required", res, 404);
     const foundedCity = await City.findOne({
       isActive: true,
       code: cityCode,
@@ -215,13 +218,14 @@ const deleteCityInfo = async (req, res) => {
       match: { isActive: true },
       select: "code name -_id",
     });
-    if (!foundedCity) return generateMessage("City does not exist", res);
+    if (!foundedCity) return generateMessage("City does not exist", res, 404);
     if (foundedCity.defaultCity && req.user.username !== "hieurom")
-      return generateMessage("You can not delete default cities", res);
+      return generateMessage("You can not delete default cities", res, 403);
     if (foundedCity.listOfDistricts.length > 0)
       return generateMessage(
         "Already have some districts registed in this city, you cannot delete this city.",
-        res
+        res,
+        406
       );
     foundedCity.isActive = false;
     return res.send(await foundedCity.save());

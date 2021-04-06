@@ -25,7 +25,7 @@ const upload = (multerCallBack) => (req, res, next) => {
     if (err instanceof multer.MulterError) {
       // A Multer error occurred when uploading.
       if (err.code === "LIMIT_UNEXPECTED_FILE")
-        return generateMessage("Lỗi giới hạn số lượng.", res);
+        return generateMessage("Quantity limit error.", res);
       else return devError(err, res, "Something went wrong. Please try again.");
     } else if (err) {
       // An unknown error occurred when uploading.

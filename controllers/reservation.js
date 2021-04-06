@@ -6,6 +6,8 @@ const Reservation = require("../models/reservation");
 const { vnDateRegex } = require("../Helpers/convertVietnameseStr");
 const User = require("../models/user");
 
+//---------------------------------------------------------------
+
 const createReservation = async (req, res) => {
   const { propertyId, startDate, endDate } = req.body;
   try {
@@ -29,9 +31,9 @@ const createReservation = async (req, res) => {
       });
 
     if (!foundedProperty)
-      return generateMessage("Cannot find this property.", res);
+      return generateMessage("Cannot find this property.", res, 404);
     if (foundedProperty.owner.username === req.user.username)
-      return generateMessage("You cannot book your own property.", res);
+      return generateMessage("You cannot book your own property.", res, 406);
     const dateRegex = vnDateRegex();
     if (
       (startDate && !dateRegex.test(startDate)) ||
@@ -39,7 +41,8 @@ const createReservation = async (req, res) => {
     )
       return generateMessage(
         "Invalid date format. Only dd/MM/yyyy formats are accepted",
-        res
+        res,
+        406
       );
     if (
       startDate &&
@@ -126,12 +129,13 @@ const reservationDetails = async (req, res) => {
         select: "owner",
         populate: { path: "owner", select: "username name email -_id" },
       });
-    if (!result) return generateMessage("This reservation does not exist", res);
+    if (!result)
+      return generateMessage("This reservation does not exist", res, 404);
     if (
       result.booker.username !== req.user.username &&
       result.property.owner.username !== req.user.username
     )
-      return generateMessage("You are not authorized", res);
+      return generateMessage("You are not authorized", res, 401);
     res.send(result);
   } catch (error) {
     devError(error, res);
@@ -150,7 +154,8 @@ const updateReservation = async (req, res) => {
     )
       return generateMessage(
         "Invalid date format. Only dd/MM/yyyy formats are accepted",
-        res
+        res,
+        406
       );
     if (
       startDate &&
@@ -172,13 +177,13 @@ const updateReservation = async (req, res) => {
         },
       });
     if (!foundedReservation)
-      return generateMessage("This reservation does not exist", res);
+      return generateMessage("This reservation does not exist", res, 404);
 
     if (
       req.user.username !== foundedReservation.booker.username &&
       req.user.username !== foundedReservation.property.owner.username
     )
-      return generateMessage("You are not authorized", res);
+      return generateMessage("You are not authorized", res, 401);
 
     const isDateBetween = (date, startDate, endDate) =>
       moment(date, "DD-MM-YYYY").isBetween(
@@ -280,13 +285,14 @@ const declineReservationRequest = async (req, res) => {
     if (!result)
       return generateMessage(
         "This reservation does not exist or already declined",
-        res
+        res,
+        404
       );
     if (
       result.property.owner.username !== req.user &&
       req.user.role !== "Admin"
     )
-      return generateMessage("You are not authorized", res);
+      return generateMessage("You are not authorized", res, 401);
     result.isActive = false;
     await result.save();
     res.send({ message: "Declined successfully." });

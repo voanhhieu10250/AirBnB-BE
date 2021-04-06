@@ -5,6 +5,8 @@ const { Property } = require("../models/property");
 const Review = require("../models/review");
 const User = require("../models/user");
 
+//----------------------------------------------------------
+
 const createPropertyReview = async (req, res) => {
   const {
     propertyId,
@@ -29,7 +31,7 @@ const createPropertyReview = async (req, res) => {
       })
       .populate("owner", "username");
     if (!foundedProperty)
-      return generateMessage("This property does not exist.", res);
+      return generateMessage("This property does not exist.", res, 404);
     if (
       (comment && typeof comment !== "string") ||
       !isKeysTypeCorrect("number", {
@@ -40,7 +42,7 @@ const createPropertyReview = async (req, res) => {
         checkIn,
       })
     )
-      return generateMessage("Invalid key type", res);
+      return generateMessage("Invalid key type", res, 406);
 
     const isReviewed = foundedProperty.rating.reviews.filter(
       (item) => item.reviewer.toString() === req.user._id
@@ -135,14 +137,15 @@ const updateReview = async (req, res) => {
         checkIn,
       })
     )
-      return generateMessage("Invalid key type", res);
+      return generateMessage("Invalid key type", res, 406);
     const foundedReview = await Review.findOne({
       _id: reviewId,
       isActive: true,
     }).populate("reviewer", "name email username -_id");
-    if (!foundedReview) return generateMessage("Cannot find this review.", res);
+    if (!foundedReview)
+      return generateMessage("Cannot find this review.", res, 404);
     if (req.user.username !== foundedReview.reviewer.username)
-      return generateMessage("You are not authorized.", res);
+      return generateMessage("You are not authorized.", res, 401);
 
     foundedReview.rating.cleanliness =
       cleanliness ?? foundedReview.rating.cleanliness;
@@ -210,9 +213,10 @@ const deleteReview = async (req, res) => {
       _id: reviewId,
       isActive: true,
     }).populate("reviewer", "name email username -_id");
-    if (!foundedReview) return generateMessage("Cannot find this review.", res);
+    if (!foundedReview)
+      return generateMessage("Cannot find this review.", res, 404);
     if (req.user.username !== foundedReview.reviewer.username)
-      return generateMessage("You are not authorized.", res);
+      return generateMessage("You are not authorized.", res, 401);
     foundedReview.isActive = false;
     await foundedReview.save();
 

@@ -2,11 +2,13 @@ const config = require("config");
 const fs = require("fs");
 const generateMessage = require("../Helpers/generateMessage");
 
+//----------------------------------------------------------------
+
 const uploadFile = async (req, res) => {
   const imagesName = req.files.photos.map(
     (item) => `http://${config.get("hostUrl")}/image/${item.filename}`
   );
-  return generateMessage("Upload successfully", res, undefined, { imagesName });
+  return generateMessage("Upload successfully", res, 200, { imagesName });
   // res.send(`http://${config.get("hostUrl")}/image/${req.file.filename}`);
   // res.send({ files: req.files, body: req.body });
 };
@@ -25,10 +27,12 @@ const deleteImage = async (req, res) => {
   if (imagesName.indexOf(".") === -1)
     return generateMessage(
       "Please enter file extension (*.png, *.jpg,...)",
-      res
+      res,
+      406
     );
   const index = fs.readdirSync(imagesFolderPath).indexOf(imageName);
-  if (index === -1) return generateMessage("This image does not exist.", res);
+  if (index === -1)
+    return generateMessage("This image does not exist.", res, 404);
   fs.unlinkSync(`./images/${imageName}`);
   res.send({ message: "Delete successfuly" });
 };

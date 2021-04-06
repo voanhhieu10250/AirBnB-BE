@@ -21,7 +21,7 @@ const userSignUp = async (req, res) => {
   try {
     const emptyKeys = getEmptyKeys({ username, password, email });
     if (emptyKeys.length > 0)
-      return generateMessage(`Vui lòng nhập ${emptyKeys[0]}`, res);
+      return generateMessage(`${emptyKeys[0]} id required`, res);
     if (
       !isKeysTypeCorrect("string", {
         username,
@@ -32,9 +32,9 @@ const userSignUp = async (req, res) => {
         group,
       })
     )
-      return generateMessage("Dữ liệu truyền vào không đúng định dạng.", res);
+      return generateMessage("Invalid key type", res, 406);
 
-    if (!isValidGroup(group)) return generateMessage("Group không hợp lệ", res);
+    if (!isValidGroup(group)) return generateMessage("Invalid group", res, 406);
     const foundedUser = await User.findOne().or([
       { username, isActive: true },
       { email, isActive: true },
@@ -42,10 +42,10 @@ const userSignUp = async (req, res) => {
     if (foundedUser)
       return res
         .status(400)
-        .send({ message: "Username hoặc email đã tồn tại. Vui lòng thử lại." });
+        .send({ message: "Username/email already exists. Please try again." });
     if (phone && !phone.match(/^\d+$/))
-      return res.status(400).send({
-        message: "Số điện thoại chỉ nên chứa số. Vui lòng thử lại.",
+      return res.status(406).send({
+        message: "Phone numbers should only contain numbers. Please try again.",
       });
     const newUser = new User({
       username,
@@ -59,7 +59,7 @@ const userSignUp = async (req, res) => {
     const result = await newUser.save();
 
     res.send({
-      message: "Đăng ký thành công.",
+      message: "Sign Up Successfully",
       username: result.username,
       email: result.email,
       name: result.name,
@@ -89,25 +89,26 @@ const adminSignUp = async (req, res) => {
         group,
       })
     )
-      return generateMessage("Dữ liệu truyền vào không đúng định dạng.", res);
+      return generateMessage("Invalid key type", res, 406);
 
     const emptyKeys = getEmptyKeys({ username, password, email });
     if (emptyKeys.length > 0)
-      return generateMessage(`Vui lòng nhập ${emptyKeys[0]}.`, res);
-    if (!isValidGroup(group)) return generateMessage("Group không hợp lệ", res);
+      return generateMessage(`${emptyKeys[0]} is required`, res);
+    if (!isValidGroup(group)) return generateMessage("Invalid group", res, 406);
     const foundedUser = await User.findOne().or([
       { username, isActive: true },
       { email, isActive: true },
     ]);
     if (foundedUser)
       return generateMessage(
-        "Username hoặc email đã tồn tại. Vui lòng thử lại.",
+        "Username/email already exist. Please try again.",
         res
       );
     if (phone && !phone.match(/^\d+$/))
       return generateMessage(
-        "Số điện thoại chỉ nên chứa số. Vui lòng thử lại.",
-        res
+        "Phone numbers should only contain numbers. Please try again.",
+        res,
+        406
       );
     const newUser = new User({
       username,
@@ -121,7 +122,7 @@ const adminSignUp = async (req, res) => {
     const result = await newUser.save();
 
     res.send({
-      message: "Đăng ký thành công.",
+      message: "Sign Up Successfully",
       username: result.username,
       email: result.email,
       name: result.name,
@@ -141,16 +142,17 @@ const signIn = async (req, res) => {
   const { username, password } = req.body;
   try {
     if (!username || !password)
-      return generateMessage("Vui lòng nhập đầy đủ thông tin.", res);
+      return generateMessage("Username and password are required", res);
     if (!isKeysTypeCorrect("string", { username, password }))
-      return generateMessage("Dữ liệu truyền vào không đúng định dạng.", res);
+      return generateMessage("Invalid key type", res, 406);
 
     const foundedUser = await User.findOne({ username, isActive: true });
-    if (!foundedUser) return generateMessage("Tài khoản không đúng", res, 401);
+    if (!foundedUser)
+      return generateMessage("Cannot find this username", res, 404);
 
     // const isMatch = await bcrypt.compare(password, foundedUser.password);
     const isMatch = foundedUser.password === password;
-    if (!isMatch) return generateMessage("Mật khẩu không đúng", res, 401);
+    if (!isMatch) return generateMessage("Incorrect password", res, 401);
 
     //generate token
     const token = jwt.sign(
@@ -166,7 +168,7 @@ const signIn = async (req, res) => {
     foundedUser.tokens.push(token);
     await foundedUser.save();
     res.send({
-      message: "Đăng nhập thành công.",
+      message: "Signed in successfully",
       name: foundedUser.name,
       role: foundedUser.role,
       accessToken: token,
@@ -203,7 +205,7 @@ const userInfo = async (req, res) => {
           select: "username name email avatar -_id",
         },
       });
-    if (!foundedUser) return generateMessage("Người dùng không tồn tại", res);
+    if (!foundedUser) return generateMessage("User does not exist", res, 404);
     res.send(foundedUser);
   } catch (error) {
     devError(error, res);
@@ -217,7 +219,7 @@ const userSignout = async (req, res) => {
     await req.user.save();
   }
 
-  return res.send({ message: "Đăng xuất thành công" });
+  return res.send({ message: "Signed out successfully" });
 };
 
 const uploadAvatar = async (req, res) => {
@@ -233,7 +235,7 @@ const uploadAvatar = async (req, res) => {
     }`;
     const { avatar, username, email, name } = await req.user.save();
     return res.send({
-      message: "Thêm avatar thành công",
+      message: "Avatar successfully added",
       result: { avatar, username, email, name },
     });
   } catch (error) {
@@ -256,7 +258,7 @@ const getListRolesOfUser = async (req, res) => {
 
 const getAllUser = async (req, res) => {
   let { keyWord, group = "gp01" } = req.query;
-  if (!isValidGroup(group)) return generateMessage("Group không hợp lệ", res);
+  if (!isValidGroup(group)) return generateMessage("Invalid group", res, 406);
   if (keyWord) {
     const regex = vietnameseRegexStr(keyWord);
     const users = await User.find({ group, isActive: true })
@@ -279,11 +281,11 @@ const getAllUser = async (req, res) => {
 
 const getUsersPerPage = async (req, res) => {
   let { keyWord, currentPage = 1, pageSize = 20, group = "gp01" } = req.query;
-  if (!isValidGroup(group)) return generateMessage("Group không hợp lệ", res);
+  if (!isValidGroup(group)) return generateMessage("Invalid group", res, 406);
   currentPage = Number(currentPage);
   pageSize = Number(pageSize);
   if (isNaN(currentPage) || isNaN(pageSize))
-    return generateMessage("CurrentPage hoặc pageSize không hợp lệ", res);
+    return generateMessage("Invalid type of currentPage/pageSize", res, 406);
   let listUser = null;
   let totalCount = null;
   if (keyWord) {
@@ -335,7 +337,7 @@ const updateUser = async (req, res) => {
     if (email) {
       const foundedEmail = await User.findOne({ email, isActive: true });
       if (foundedEmail && foundedEmail.username !== req.user.username)
-        return generateMessage("Email đã tồn tại", res);
+        return generateMessage("Email already exist", res);
     }
     req.user.phone = phone || req.user.phone;
     req.user.name = name || req.user.name;
@@ -354,7 +356,7 @@ const deleteUser = async (req, res) => {
   if (!username) return generateMessage("Username?", res);
   else if (username === req.user.username || req.user.role === "Admin") {
     const user = await User.findOne({ username, isActive: true });
-    if (!user) return generateMessage("Người dùng không tồn tại", res);
+    if (!user) return generateMessage("Cannot find this username", res, 404);
     user.isActive = false;
     await user.save();
     if (user.hostedList.length > 0)
@@ -363,9 +365,8 @@ const deleteUser = async (req, res) => {
         prop.isActive = false;
         await prop.save();
       });
-    return res.send({ message: "Xóa thành công" });
-  } else
-    return generateMessage("Bạn không có quyền thực hiện chức năng này", res);
+    return res.send({ message: "Deleted successfully" });
+  } else return generateMessage("You are not authorized to do this", res, 401);
 };
 
 module.exports = {

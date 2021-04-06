@@ -11,17 +11,19 @@ const City = require("../models/city");
 const District = require("../models/district");
 const { Property } = require("../models/property");
 
+//-------------------------------------------------------------
+
 const addNewDistrict = async (req, res) => {
-  const { cityCode, name } = req.body;
+  const { cityCode, districtName } = req.body;
   try {
-    const emptyKeys = getEmptyKeys({ cityCode, name });
+    const emptyKeys = getEmptyKeys({ cityCode, districtName });
     if (emptyKeys.length > 0)
-      return generateMessage(`${emptyKeys[0]} is required`, res);
+      return generateMessage(`${emptyKeys[0]} is required`, res, 404);
     const foundedCity = await City.findOne({ code: cityCode, isActive: true });
-    if (!foundedCity) return generateMessage("Can't find city", res);
+    if (!foundedCity) return generateMessage("City does not exist", res, 404);
     const foundedDistrict = await District.findOne({
       cityCode,
-      name: { $regex: vietnameseRegexStr(name) },
+      name: { $regex: vietnameseRegexStr(districtName) },
       isActive: true,
     });
     if (foundedDistrict)
@@ -29,7 +31,9 @@ const addNewDistrict = async (req, res) => {
         "District name already existed in this city.",
         res
       );
-    let tempDistrictCode = `${foundedCity.code}-${nonAccentVietnamese(name)
+    let tempDistrictCode = `${foundedCity.code}-${nonAccentVietnamese(
+      districtName
+    )
       .split(",")[0]
       .replace(/ /g, "")}`;
     let n = 0;
@@ -43,7 +47,7 @@ const addNewDistrict = async (req, res) => {
     const newDistrict = new District({
       cityCode,
       code: tempDistrictCode,
-      name,
+      name: districtName,
     });
     const result = await newDistrict.save();
     foundedCity.listOfDistricts.push(result._id);
@@ -57,8 +61,9 @@ const addNewDistrict = async (req, res) => {
 const getDistrictDetails = async (req, res) => {
   const { districtCode, group = "gp01" } = req.query;
   try {
-    if (!districtCode) return generateMessage("District code is required", res);
-    if (!isValidGroup(group)) return generateMessage("Invalid group", res);
+    if (!districtCode)
+      return generateMessage("District code is required", res, 404);
+    if (!isValidGroup(group)) return generateMessage("Invalid group", res, 406);
     const foundedDistrict = await District.findOne({
       code: districtCode,
       isActive: true,
@@ -72,7 +77,7 @@ const getDistrictDetails = async (req, res) => {
         "group rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds",
     });
     if (!foundedDistrict)
-      return generateMessage("District does not exist", res);
+      return generateMessage("District does not exist", res, 404);
     res.send(foundedDistrict);
   } catch (error) {
     devError(error, res);
@@ -87,13 +92,14 @@ const getDistrictDetailsPerPage = async (req, res) => {
     pageSize = 20,
   } = req.query;
   try {
-    if (!districtCode) return generateMessage("District code is required", res);
+    if (!districtCode)
+      return generateMessage("District code is required", res, 404);
     if (
       !isKeysTypeCorrect("string", { districtCode, group }) ||
       !isKeysTypeCorrect("number", { currentPage, pageSize })
     )
-      return generateMessage("Invalid key type", res);
-    if (!isValidGroup(group)) return generateMessage("Invalid group", res);
+      return generateMessage("Invalid key type", res, 406);
+    if (!isValidGroup(group)) return generateMessage("Invalid group", res, 406);
     const foundedDistrict = await District.findOne({
       code: districtCode,
       isActive: true,
@@ -112,7 +118,7 @@ const getDistrictDetailsPerPage = async (req, res) => {
         "group rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds",
     });
     if (!foundedDistrict)
-      return generateMessage("District does not exist", res);
+      return generateMessage("District does not exist", res, 404);
     const totalCount = await Property.find({
       group,
       districtCode,
@@ -135,15 +141,16 @@ const getDistrictDetailsPerPage = async (req, res) => {
 const updateDistrictInfo = async (req, res) => {
   const { districtCode, name, defaultDistrict } = req.body;
   try {
-    if (!districtCode) return generateMessage("District code is required", res);
+    if (!districtCode)
+      return generateMessage("District code is required", res, 404);
     if (typeof districtCode !== "string" || typeof name !== "string")
-      return generateMessage("Invalid key type");
+      return generateMessage("Invalid key type", 406);
     const foundedDistrict = await District.findOne({
       isActive: true,
       code: districtCode,
     });
     if (!foundedDistrict)
-      return generateMessage("District does not exist", res);
+      return generateMessage("District does not exist", res, 404);
     if (req.user.username === "hieurom") {
       foundedDistrict.name = name || foundedDistrict.name;
       foundedDistrict.defaultDistrict =
@@ -153,7 +160,7 @@ const updateDistrictInfo = async (req, res) => {
       delete result.listOfProperties;
       res.send(result);
     } else if (foundedDistrict.defaultDistrict)
-      return generateMessage("You can not edit default district.", res);
+      return generateMessage("You can not edit a default district.", res, 403);
     else {
       foundedDistrict.name = name || foundedDistrict.name;
       const result = await foundedDistrict.save();
@@ -169,7 +176,8 @@ const updateDistrictInfo = async (req, res) => {
 const deleteDistrict = async (req, res) => {
   const { districtCode } = req.query;
   try {
-    if (!districtCode) return generateMessage("District code is required", res);
+    if (!districtCode)
+      return generateMessage("District code is required", res, 404);
     const foundedDistrict = await District.findOne({
       code: districtCode,
       isActive: true,
@@ -179,13 +187,14 @@ const deleteDistrict = async (req, res) => {
       select: "_id",
     });
     if (!foundedDistrict)
-      return generateMessage("District does not exist", res);
+      return generateMessage("District does not exist", res, 404);
     if (foundedDistrict.defaultDistrict)
-      return generateMessage("You can not delete default district", res);
+      return generateMessage("You can not delete a default district", res, 403);
     if (foundedDistrict.listOfProperties.length > 0)
       return generateMessage(
         "Already have some properties registed in this district, you cannot delete this district.",
-        res
+        res,
+        406
       );
     foundedDistrict.isActive = false;
     res.send(await foundedDistrict.save());

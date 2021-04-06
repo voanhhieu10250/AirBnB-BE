@@ -10,7 +10,7 @@ const jwtSignature = config.get("jwtSignature");
 const auth = (roles) => async (req, res, next) => {
   try {
     if (!req.headers.authorization)
-      return generateMessage("Lỗi xác thực", res, 401);
+      return generateMessage("You are not authorized", res, 401);
     const token = req.header("Authorization").replace("Bearer ", "");
     const decoded = jwt.verify(token, jwtSignature);
 
@@ -20,7 +20,7 @@ const auth = (roles) => async (req, res, next) => {
       role: decoded.role,
     });
     if (emptyKeys.length > 0)
-      return generateMessage("Dữ liệu không hợp lệ", res);
+      return generateMessage("Something is not right", res, 401);
 
     const allowRoles = roles || ["Admin", "User"];
 
@@ -32,7 +32,7 @@ const auth = (roles) => async (req, res, next) => {
     });
     if (!foundedUser)
       return generateMessage(
-        "Bạn không có quyền thực hiện chức năng này",
+        "You don't have the permission do this functionality.",
         res,
         401
       );
@@ -44,12 +44,12 @@ const auth = (roles) => async (req, res, next) => {
   } catch (error) {
     if (error.message === "jwt expired")
       return generateMessage(
-        "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại",
+        "The login session has expired. Please log in again.",
         res
       );
     else if (error.message === "jwt malformed")
       return generateMessage(
-        "Bạn không có quyền thực hiện chức năng này.",
+        "You don't have the permission do this functionality.",
         res,
         403
       );

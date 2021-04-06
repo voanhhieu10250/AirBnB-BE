@@ -14,6 +14,8 @@ const {
 } = require("../Helpers/convertVietnameseStr");
 const City = require("../models/city");
 
+//---------------------------------------------------------------
+
 const getListRentalType = (req, res) => {
   res.send([
     {
@@ -66,22 +68,22 @@ const createRentalProperty = async (req, res) => {
       latitude,
     });
     if (emptyKeys.length > 0)
-      return generateMessage(`${emptyKeys[0]} không được trống`, res);
+      return generateMessage(`${emptyKeys[0]} is required`, res);
     if (
       isKeysTypeCorrect("object", req.body) ||
       isKeysTypeCorrect("array", req.body) ||
       !isKeysTypeCorrect("boolean", isPublished) ||
       !isKeysTypeCorrect("number", { longitude, latitude })
     )
-      return generateMessage("Kiểu dữ liệu không hợp lệ", res);
+      return generateMessage("Invalid key type", res, 406);
     if (group && !isValidGroup(group))
-      return generateMessage("Group không hợp lệ", res);
+      return generateMessage("Invalid group", res, 406);
     const foundedDistrict = await District.findOne({
       code: districtCode,
       isActive: true,
     }).select("name listOfProperties cityCode");
     if (!foundedDistrict)
-      return generateMessage("District does not exist", res);
+      return generateMessage("District does not exist", res, 404);
     const foundedProperty = await Property.findOne({
       group,
       isActive: true,
@@ -159,7 +161,7 @@ const getPropertyInfo = async (req, res) => {
         select: "name username avatar -_id",
       });
     if (!property) {
-      return generateMessage("Property không tồn tại", res);
+      return generateMessage("Property does not exist", res, 404);
     }
 
     return res.send(property);
@@ -198,21 +200,22 @@ const updatePropertyFrontInfo = async (req, res) => {
       }) ||
       !isKeysTypeCorrect("boolean", { isPublished })
     ) {
-      return generateMessage("Invalid key type", res);
+      return generateMessage("Invalid key type", res, 406);
     }
     const foundedProperty = await Property.findOne({
       _id: propertyId,
       isActive: true,
     }).populate("owner", "username -_id");
     if (!foundedProperty)
-      return generateMessage("Property does not exist", res);
+      return generateMessage("Property does not exist", res, 404);
     if (
       foundedProperty.owner.username !== req.user.username &&
       req.user.role !== "Admin"
     )
       return generateMessage(
         "You don't have the permission do this functionality.",
-        res
+        res,
+        401
       );
     foundedProperty.amountOfGuest =
       amountOfGuest ?? foundedProperty.amountOfGuest;
@@ -251,7 +254,7 @@ const addImagesToProperty = async (req, res) => {
       .populate("owner", "username -_id");
     if (!foundedProperty) {
       deleteImages();
-      return generateMessage("Property does not exist", res);
+      return generateMessage("Property does not exist", res, 404);
     }
     if (
       foundedProperty.owner.username !== req.user.username &&
@@ -260,7 +263,8 @@ const addImagesToProperty = async (req, res) => {
       deleteImages();
       return generateMessage(
         "You don't have the permission do this functionality.",
-        res
+        res,
+        401
       );
     }
 
@@ -281,7 +285,7 @@ const removeImageFromProperty = async (req, res) => {
   try {
     if (!propertyId) return generateMessage("Property id is required", res);
     if (typeof imageLink !== "string" || typeof propertyId !== "string")
-      return generateMessage("Invalid key type", res);
+      return generateMessage("Invalid key type", res, 406);
     const foundedProperty = await Property.findOne({
       _id: propertyId,
       isActive: true,
@@ -289,18 +293,23 @@ const removeImageFromProperty = async (req, res) => {
       .select("owner images")
       .populate("owner", "username -_id");
     if (!foundedProperty)
-      return generateMessage("Property does not exist", res);
+      return generateMessage("Property does not exist", res, 404);
     if (
       foundedProperty.owner.username !== req.user.username &&
       req.user.role !== "Admin"
     )
       return generateMessage(
         "You don't have the permission do this functionality.",
-        res
+        res,
+        401
       );
     const imageIndex = foundedProperty.images.indexOf(imageLink);
     if (imageIndex === -1)
-      return generateMessage("Can't find your link in this property.", res);
+      return generateMessage(
+        "Cannot find the provided link in this property.",
+        res,
+        404
+      );
     foundedProperty.images.splice(imageIndex, 1);
     const result = await foundedProperty.save();
     res.send(result);
@@ -337,14 +346,15 @@ const updatePropertyAmenities = async (req, res) => {
       .select("amenities owner")
       .populate("owner", "username -_id");
     if (!foundedProperty)
-      return generateMessage("Property does not exist", res);
+      return generateMessage("Property does not exist", res, 404);
     if (
       foundedProperty.owner.username !== req.user.username &&
       req.user.role !== "Admin"
     )
       return generateMessage(
         "You don't have the permission do this functionality.",
-        res
+        res,
+        401
       );
     const amenities = {
       television,
@@ -361,7 +371,7 @@ const updatePropertyAmenities = async (req, res) => {
       dryer,
     };
     if (!isKeysTypeCorrect("boolean", amenities))
-      return generateMessage("Invalid key type", res);
+      return generateMessage("Invalid key type", res, 406);
     for (const key in amenities) {
       foundedProperty.amenities[key] =
         amenities[key] ?? foundedProperty.amenities[key];
@@ -384,18 +394,19 @@ const updatePropertyFacilities = async (req, res) => {
       .select("facilities owner")
       .populate("owner", "username -_id");
     if (!foundedProperty)
-      return generateMessage("Property does not exist", res);
+      return generateMessage("Property does not exist", res, 404);
     if (
       foundedProperty.owner.username !== req.user.username &&
       req.user.role !== "Admin"
     )
       return generateMessage(
         "You don't have the permission do this functionality.",
-        res
+        res,
+        401
       );
     const facilities = { hotTub, gym, pool, freeParking };
     if (!isKeysTypeCorrect("boolean", facilities))
-      return generateMessage("Invalid key type", res);
+      return generateMessage("Invalid key type", res, 406);
     for (const key in facilities) {
       foundedProperty.facilities[key] =
         facilities[key] ?? foundedProperty.facilities[key];
@@ -426,14 +437,15 @@ const updatePropertyRules = async (req, res) => {
       .select("rules owner")
       .populate("owner", "username -_id");
     if (!foundedProperty)
-      return generateMessage("Property does not exist", res);
+      return generateMessage("Property does not exist", res, 404);
     if (
       foundedProperty.owner.username !== req.user.username &&
       req.user.role !== "Admin"
     )
       return generateMessage(
         "You don't have the permission do this functionality.",
-        res
+        res,
+        401
       );
     const rules = {
       petsAllowed,
@@ -444,7 +456,7 @@ const updatePropertyRules = async (req, res) => {
       customRules,
     };
     if (!isKeysTypeCorrect("boolean", { ...rules, customRules: undefined }))
-      return generateMessage("Invalid key type", res);
+      return generateMessage("Invalid key type", res, 406);
     for (const key in rules) {
       foundedProperty.rules[key] = rules[key] ?? foundedProperty.rules[key];
     }
@@ -475,14 +487,15 @@ const updatePropertyRequireForBooker = async (req, res) => {
       .select("requireForBooker owner")
       .populate("owner", "username -_id");
     if (!foundedProperty)
-      return generateMessage("Property does not exist", res);
+      return generateMessage("Property does not exist", res, 404);
     if (
       foundedProperty.owner.username !== req.user.username &&
       req.user.role !== "Admin"
     )
       return generateMessage(
         "You don't have the permission do this functionality.",
-        res
+        res,
+        401
       );
     const requireForBooker = {
       checkInTime,
@@ -501,7 +514,7 @@ const updatePropertyRequireForBooker = async (req, res) => {
       hasNoBadReview: "boolean",
     };
     if (!isKeysTypeCorrect(objTypes, requireForBooker))
-      return generateMessage("Invalid key type", res);
+      return generateMessage("Invalid key type", res, 406);
     foundedProperty.requireForBooker.checkInTime =
       checkInTime ?? foundedProperty.requireForBooker.checkInTime;
     foundedProperty.requireForBooker.checkOutTime =
@@ -548,14 +561,15 @@ const updatePropertyNoticeAbout = async (req, res) => {
       .select("noticeAbout owner")
       .populate("owner", "username -_id");
     if (!foundedProperty)
-      return generateMessage("Property does not exist", res);
+      return generateMessage("Property does not exist", res, 404);
     if (
       foundedProperty.owner.username !== req.user.username &&
       req.user.role !== "Admin"
     )
       return generateMessage(
         "You don't have the permission do this functionality.",
-        res
+        res,
+        401
       );
     const noticeAbout = {
       stairs,
@@ -566,7 +580,7 @@ const updatePropertyNoticeAbout = async (req, res) => {
       cameras,
     };
     if (!isKeysTypeCorrect("string", noticeAbout))
-      return generateMessage("Invalid key type", res);
+      return generateMessage("Invalid key type", res, 406);
     for (const key in noticeAbout) {
       foundedProperty.noticeAbout[key] =
         noticeAbout[key] ?? foundedProperty.noticeAbout[key];
@@ -583,7 +597,7 @@ const deleteProperty = async (req, res) => {
   try {
     if (!propertyId) return generateMessage("Property id is required", res);
     if (typeof propertyId !== "string")
-      return generateMessage("Invalid key type", res);
+      return generateMessage("Invalid key type", res, 406);
     const foundedProperty = await Property.findOne({
       _id: propertyId,
       isActive: true,
@@ -591,14 +605,15 @@ const deleteProperty = async (req, res) => {
       .select("owner")
       .populate("owner", "username");
     if (!foundedProperty)
-      return generateMessage("Property does not exist", res);
+      return generateMessage("Property does not exist", res, 404);
     if (
       foundedProperty.owner.username !== req.user.username &&
       req.user.role !== "Admin"
     )
       return generateMessage(
         "You don't have the permission do this functionality.",
-        res
+        res,
+        401
       );
     foundedProperty.isActive = false;
     await foundedProperty.save();
@@ -632,8 +647,8 @@ const getListProperty = async (req, res) => {
       }) ||
       !isKeysTypeCorrect("number", { amountOfGuest })
     )
-      return generateMessage("Invalid data type", res);
-    if (!isValidGroup(group)) return generateMessage("Invalid group", res);
+      return generateMessage("Invalid data type", res, 406);
+    if (!isValidGroup(group)) return generateMessage("Invalid group", res, 406);
 
     const dateRegex = vnDateRegex();
     if (
@@ -642,7 +657,8 @@ const getListProperty = async (req, res) => {
     )
       return generateMessage(
         "Invalid date format. Only dd/MM/yyyy formats are accepted",
-        res
+        res,
+        406
       );
     const propertyOptQuery = {
       group: group || "gp01",
@@ -660,7 +676,7 @@ const getListProperty = async (req, res) => {
       name: { $regex: vietnameseRegexStr(cityName) },
     }).select("name code");
     if (!foundedCity)
-      return generateMessage("Cannot find the city you provided", res);
+      return generateMessage("Cannot find the city you provided", res, 404);
 
     const foundedDistrict = await District.findOne({
       isActive: true,
@@ -685,7 +701,7 @@ const getListProperty = async (req, res) => {
         },
       });
     if (!foundedDistrict)
-      return generateMessage("Cannot find the district you provided", res);
+      return generateMessage("Cannot find the district you provided", res, 404);
     if (fromDate || toDate) {
       if (!fromDate && toDate)
         return generateMessage(
@@ -780,8 +796,8 @@ const getListPropertyPerPage = async (req, res) => {
       }) ||
       !isKeysTypeCorrect("number", { amountOfGuest, currentPage, pageSize })
     )
-      return generateMessage("Invalid data type", res);
-    if (!isValidGroup(group)) return generateMessage("Invalid group", res);
+      return generateMessage("Invalid data type", res, 406);
+    if (!isValidGroup(group)) return generateMessage("Invalid group", res, 406);
 
     const dateRegex = vnDateRegex();
     if (
@@ -790,7 +806,8 @@ const getListPropertyPerPage = async (req, res) => {
     )
       return generateMessage(
         "Invalid date format. Only dd/MM/yyyy formats are accepted",
-        res
+        res,
+        406
       );
 
     const propertyOptQuery = {
@@ -809,7 +826,7 @@ const getListPropertyPerPage = async (req, res) => {
       name: { $regex: vietnameseRegexStr(cityName) },
     }).select("name code");
     if (!foundedCity)
-      return generateMessage("Cannot find the city you provided", res);
+      return generateMessage("Cannot find the city you provided", res, 404);
 
     const foundedDistrict = await District.findOne({
       isActive: true,
@@ -834,7 +851,7 @@ const getListPropertyPerPage = async (req, res) => {
         },
       });
     if (!foundedDistrict)
-      return generateMessage("Cannot find the district you provided", res);
+      return generateMessage("Cannot find the district you provided", res, 404);
     if (!fromDate && toDate)
       return generateMessage(
         "'toDate' need to go with 'fromDate'. Please enter 'fromDate'.",
