@@ -1,5 +1,3 @@
-// Đã check router
-
 const config = require("config");
 const fs = require("fs");
 const generateMessage = require("../Helpers/generateMessage");

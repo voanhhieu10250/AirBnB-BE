@@ -1,5 +1,3 @@
-// Đã check router
-
 const getEmptyKeys = require("../Helpers/getEmptyKeys");
 const fs = require("fs");
 const { devError } = require("../Helpers/devError");
@@ -184,14 +182,27 @@ const userInfo = async (req, res) => {
     const foundedUser = await User.findOne({
       username,
       isActive: true,
-    }).populate({
-      path: "hostedList wishList",
-      match: { isActive: true },
-      select:
-        "group cityCode rentalType roomsAndBeds amountOfGuest address title description images pricePerDay rating isPublished",
-    });
-    // .populate("bookedList", "booker property startDate endDate totalPrice")
-    // .populate("reviews", "reviewer rating comment -_id");
+    })
+      .populate({
+        path: "hostedList",
+        match: { isActive: true },
+        select:
+          "group cityCode rentalType roomsAndBeds amountOfGuest address title description pricePerDay rating.scores rating.totalReviews isPublished",
+      })
+      .populate({
+        path: "bookedList manageReservations",
+        match: { isActive: true },
+        populate: { path: "booker", select: "username name -_id" },
+      })
+      .populate({
+        path: "reviews",
+        match: { isActive: true },
+        select: "reviewer rating comment -_id",
+        populate: {
+          path: "reviewer",
+          select: "username name email avatar -_id",
+        },
+      });
     if (!foundedUser) return generateMessage("Người dùng không tồn tại", res);
     res.send(foundedUser);
   } catch (error) {
@@ -254,11 +265,13 @@ const getAllUser = async (req, res) => {
         { name: { $regex: regex } },
         { email: { $regex: regex } },
       ])
-      .populate("wishList reviews hostedList bookedList");
+      .select(
+        "group username password email phone name role description avatar -_id"
+      );
     res.send(users);
   } else {
-    const users = await User.find({ group, isActive: true }).populate(
-      "wishList rating.reviews hostedList bookedList"
+    const users = await User.find({ group, isActive: true }).select(
+      "group username password email phone name role description avatar -_id"
     );
     res.send(users);
   }
@@ -281,6 +294,9 @@ const getUsersPerPage = async (req, res) => {
         { name: { $regex: regex } },
         { email: { $regex: regex } },
       ])
+      .select(
+        "group username password email phone name role description avatar -_id"
+      )
       .skip((currentPage - 1) * pageSize)
       .limit(pageSize);
     totalCount = await User.find({ group, isActive: true })
@@ -292,6 +308,9 @@ const getUsersPerPage = async (req, res) => {
       .countDocuments();
   } else {
     listUser = await User.find({ group, isActive: true })
+      .select(
+        "group username password email phone name role description avatar -_id"
+      )
       .skip((currentPage - 1) * pageSize)
       .limit(pageSize);
 

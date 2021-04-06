@@ -1,5 +1,3 @@
-// Đã check isActive, check router
-
 const {
   nonAccentVietnamese,
   vietnameseRegexStr,
@@ -12,7 +10,7 @@ const isValidGroup = require("../Helpers/validateGroup");
 const City = require("../models/city");
 const District = require("../models/district");
 
-// Dành cho Admin
+// Admin only
 const addNewCity = async (req, res) => {
   let { cityCode, name } = req.body;
 
@@ -158,7 +156,7 @@ const getListCity = async (req, res) => {
   }
 };
 
-// Admin only. Only hieurom can change all things about cities
+// Admin only
 const updateCityInfo = async (req, res) => {
   const { cityCode, name, defaultCity } = req.body;
   try {

@@ -3,13 +3,15 @@ const generateMessage = require("../Helpers/generateMessage");
 const { Property } = require("../models/property");
 const moment = require("moment");
 const Reservation = require("../models/reservation");
-const vnDateRegex = require("../Helpers/convertVietnameseStr");
+const { vnDateRegex } = require("../Helpers/convertVietnameseStr");
+const User = require("../models/user");
 
 const createReservation = async (req, res) => {
   const { propertyId, startDate, endDate } = req.body;
   try {
     if (!propertyId) return generateMessage("Property id is required", res);
     if (!startDate) return generateMessage("Start date is requried", res);
+    if (!endDate) return generateMessage("End date is requried", res);
     const foundedProperty = await Property.findOne({
       _id: propertyId,
       isActive: true,
@@ -20,27 +22,40 @@ const createReservation = async (req, res) => {
         path: "listOfReservation",
         match: { isActive: true },
         select: "startDate endDate",
+      })
+      .populate({
+        path: "owner",
+        select: "username -_id",
       });
+
     if (!foundedProperty)
       return generateMessage("Cannot find this property.", res);
+    if (foundedProperty.owner.username === req.user.username)
+      return generateMessage("You cannot book your own property.", res);
     const dateRegex = vnDateRegex();
     if (
-      (startDate || endDate) &&
-      (!dateRegex.test(startDate) || !dateRegex.test(endDate))
+      (startDate && !dateRegex.test(startDate)) ||
+      (endDate && !dateRegex.test(endDate))
     )
       return generateMessage(
         "Invalid date format. Only dd/MM/yyyy formats are accepted",
         res
       );
-    const isDateBetween = (date, startDate, endDate) =>
-      moment(date, "DD-MM-YYYY").isBetween(
-        moment(startDate, "DD-MM-YYYY"),
-        moment(endDate, "DD-MM-YYYY"),
-        undefined,
+    if (
+      startDate &&
+      endDate &&
+      moment(startDate, "DD-MM-YYYY").isAfter(moment(endDate, "DD-MM-YYYY"))
+    )
+      return generateMessage("'startDate' cannot be later than 'endDate'", res);
+    const isDateBetween = (a, b, c) =>
+      moment(a, "DD-MM-YYYY").isBetween(
+        moment(b, "DD-MM-YYYY"),
+        c ? moment(c, "DD-MM-YYYY") : moment().add(1825, "days"),
+        null,
         "[]"
       );
-    const unmatchedProperties = null;
-    for (const item of foundedProperty.listOfReservation) {
+    let unmatchedProperties = null;
+    for (const item of [...foundedProperty.listOfReservation]) {
       const inavailFromDate = isDateBetween(
         startDate,
         item.startDate,
@@ -52,9 +67,11 @@ const createReservation = async (req, res) => {
         item.endDate
       );
       const overBookedDays =
-        isDateBetween(item.startDate, fromDate, toDate) ||
-        (moment(item.startDate, "DD-MM-YYYY").isBefore(fromDate) &&
-          (isDateBetween(item.endDate, fromDate, toDate) || !item.endDate));
+        isDateBetween(item.startDate, startDate, endDate) ||
+        (moment(item.startDate, "DD-MM-YYYY").isBefore(
+          moment(startDate, "DD-MM-YYYY")
+        ) &&
+          (isDateBetween(item.endDate, startDate, endDate) || !item.endDate));
       if (inavailFromDate || inavailToDate || overBookedDays) {
         unmatchedProperties = item;
         break;
@@ -62,7 +79,7 @@ const createReservation = async (req, res) => {
     }
     if (unmatchedProperties)
       return generateMessage(
-        "This date has already been booked, please select another date.",
+        "The dates you choose have already been booked, please select another date.",
         res
       );
     const totalPrice = endDate
@@ -83,6 +100,14 @@ const createReservation = async (req, res) => {
     const result = await newReservation.save();
     req.user.bookedList.push(result._id);
     await req.user.save();
+    foundedProperty.listOfReservation.push(result._id);
+    await foundedProperty.save();
+    const foundedUser = await User.findOne({
+      username: foundedProperty.owner.username,
+    }).select("group manageReservations");
+    foundedUser.manageReservations.push(result._id);
+    await foundedUser.save();
+    await result.populate("booker", "username name email -_id").execPopulate();
     res.send(result);
   } catch (error) {
     devError(error, res);
@@ -95,11 +120,11 @@ const reservationDetails = async (req, res) => {
     if (!reservationId)
       return generateMessage("Reservation Id is required", res);
     const result = await Reservation.findOne({ _id: reservationId })
-      .populate("booker", "username email phone name avatar")
+      .populate("booker", "username email phone name avatar -_id")
       .populate({
         path: "property",
         select: "owner",
-        populate: { path: "owner", select: "username" },
+        populate: { path: "owner", select: "username name email -_id" },
       });
     if (!result) return generateMessage("This reservation does not exist", res);
     if (
@@ -114,28 +139,35 @@ const reservationDetails = async (req, res) => {
 };
 
 const updateReservation = async (req, res) => {
-  const { reservationId, startDate, endDate, isActive } = req.body;
+  const { reservationId, startDate, endDate } = req.body;
   try {
     if (!reservationId)
       return generateMessage("Reservation Id is required", res);
     const dateRegex = vnDateRegex();
     if (
-      (startDate || endDate) &&
-      (!dateRegex.test(startDate) || !dateRegex.test(endDate))
+      (startDate && !dateRegex.test(startDate)) ||
+      (endDate && !dateRegex.test(endDate))
     )
       return generateMessage(
         "Invalid date format. Only dd/MM/yyyy formats are accepted",
         res
       );
-
-    const foundedReservation = await Reservation.findOne({ _id: reservationId })
-      .populate("booker", "username")
+    if (
+      startDate &&
+      endDate &&
+      moment(startDate, "DD-MM-YYYY").isAfter(moment(endDate, "DD-MM-YYYY"))
+    )
+      return generateMessage("'startDate' cannot be later than 'endDate'", res);
+    const foundedReservation = await Reservation.findOne({
+      _id: reservationId,
+      isActive: true,
+    })
+      .populate("booker", "username -_id")
       .populate({
         path: "property",
-        select: "owner listOfReservation",
+        select: "owner listOfReservation serviceFee pricePerDay",
         populate: {
           path: "owner listOfReservation",
-          match: { isActive: true },
           select: "username startDate endDate",
         },
       });
@@ -151,26 +183,40 @@ const updateReservation = async (req, res) => {
     const isDateBetween = (date, startDate, endDate) =>
       moment(date, "DD-MM-YYYY").isBetween(
         moment(startDate, "DD-MM-YYYY"),
-        moment(endDate, "DD-MM-YYYY"),
+        endDate ? moment(endDate, "DD-MM-YYYY") : moment().add(1825, "days"),
         undefined,
         "[]"
       );
-    const unmatchedProperties = null;
-    for (const item of foundedReservation.property.listOfReservation) {
+    let unmatchedProperties = null;
+    const filteredList = foundedReservation.property.listOfReservation.filter(
+      (item) => item._id.toString() !== reservationId
+    );
+    for (const item of filteredList) {
       const inavailFromDate = isDateBetween(
-        startDate,
+        startDate || foundedReservation.startDate,
         item.startDate,
         item.endDate
       );
       const inavailToDate = isDateBetween(
-        endDate,
+        endDate || foundedReservation.endDate,
         item.startDate,
         item.endDate
       );
       const overBookedDays =
-        isDateBetween(item.startDate, fromDate, toDate) ||
-        (moment(item.startDate, "DD-MM-YYYY").isBefore(fromDate) &&
-          (isDateBetween(item.endDate, fromDate, toDate) || !item.endDate));
+        isDateBetween(
+          item.startDate,
+          startDate || foundedReservation.startDate,
+          endDate || foundedReservation.endDate
+        ) ||
+        (moment(item.startDate, "DD-MM-YYYY").isBefore(
+          moment(startDate || foundedReservation.startDate, "DD-MM-YYYY")
+        ) &&
+          (isDateBetween(
+            item.endDate,
+            startDate || foundedReservation.startDate,
+            endDate || foundedReservation.endDate
+          ) ||
+            !item.endDate));
       if (inavailFromDate || inavailToDate || overBookedDays) {
         unmatchedProperties = item;
         break;
@@ -178,26 +224,53 @@ const updateReservation = async (req, res) => {
     }
     if (unmatchedProperties)
       return generateMessage(
-        "This date has already been booked, please select another date.",
+        "The dates you choose have already been booked, please select another date.",
         res
       );
 
+    if (
+      startDate &&
+      moment(startDate, "DD-MM-YYYY").isAfter(
+        moment(foundedReservation.endDate, "DD-MM-YYYY")
+      )
+    )
+      return generateMessage("'startDate' cannot be later than 'endDate'", res);
+    if (
+      endDate &&
+      moment(endDate, "DD-MM-YYYY").isBefore(
+        moment(foundedReservation.startDate, "DD-MM-YYYY")
+      )
+    )
+      return generateMessage(
+        "'endDate' cannot be sooner than 'startDate'",
+        res
+      );
     foundedReservation.startDate = startDate || foundedReservation.startDate;
     foundedReservation.endDate = endDate || foundedReservation.endDate;
-    foundedReservation.isActive = isActive || foundedReservation.isActive;
+    foundedReservation.totalPrice =
+      foundedReservation.property.serviceFee +
+      foundedReservation.property.pricePerDay *
+        moment(foundedReservation.endDate, "DD-MM-YYYY").diff(
+          moment(foundedReservation.startDate, "DD-MM-YYYY"),
+          "days"
+        );
+
     const result = await foundedReservation.save();
-    res.send(result);
+    res.send({ ...result.toObject(), property: result.property._id });
   } catch (error) {
     devError(error, res);
   }
 };
 
 const declineReservationRequest = async (req, res) => {
-  const { reservationId } = req.body;
+  const { reservationId } = req.query;
   try {
     if (!reservationId)
       return generateMessage("Reservation Id is required", res);
-    const result = Reservation.findOne({ _id: reservationId, isActive: true })
+    const result = await Reservation.findOne({
+      _id: reservationId,
+      isActive: true,
+    })
       .populate("booker", "username email phone name avatar")
       .populate({
         path: "property",

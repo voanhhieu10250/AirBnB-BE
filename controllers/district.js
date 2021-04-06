@@ -1,5 +1,3 @@
-// Đã check isActive, router
-
 const {
   vietnameseRegexStr,
   nonAccentVietnamese,

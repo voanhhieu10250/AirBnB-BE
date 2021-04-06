@@ -54,10 +54,10 @@ const userSchema = new mongoose.Schema(
         ref: "Review",
       },
     ],
-    wishList: [
+    manageReservations: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Property",
+        ref: "Reservation",
       },
     ],
     isActive: {

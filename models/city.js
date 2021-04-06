@@ -18,7 +18,7 @@ const citySchema = new mongoose.Schema({
   ],
   defaultCity: {
     type: Boolean,
-    default: true,
+    default: false,
   },
   isActive: {
     type: Boolean,

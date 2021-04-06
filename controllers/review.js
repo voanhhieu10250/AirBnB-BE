@@ -3,6 +3,7 @@ const generateMessage = require("../Helpers/generateMessage");
 const isKeysTypeCorrect = require("../Helpers/isKeysTypeCorrect");
 const { Property } = require("../models/property");
 const Review = require("../models/review");
+const User = require("../models/user");
 
 const createPropertyReview = async (req, res) => {
   const {
@@ -20,17 +21,18 @@ const createPropertyReview = async (req, res) => {
       _id: propertyId,
       isActive: true,
     })
-      .select("rating")
+      .select("rating owner")
       .populate({
         path: "rating.reviews",
         match: { isActive: true },
-        select: "rating",
-      });
+        select: "rating reviewer",
+      })
+      .populate("owner", "username");
     if (!foundedProperty)
       return generateMessage("This property does not exist.", res);
     if (
       (comment && typeof comment !== "string") ||
-      isKeysTypeCorrect("number", {
+      !isKeysTypeCorrect("number", {
         cleanliness,
         accuracy,
         communication,
@@ -39,13 +41,13 @@ const createPropertyReview = async (req, res) => {
       })
     )
       return generateMessage("Invalid key type", res);
-    const isReviewed = await Property.findOne({
-      _id: propertyId,
-      isActive: true,
-      "rating.reviews": req.user._id,
-    }).select("rating");
-    if (isReviewed)
+
+    const isReviewed = foundedProperty.rating.reviews.filter(
+      (item) => item.reviewer.toString() === req.user._id
+    );
+    if (isReviewed.length > 0)
       return generateMessage("You have already reviewed this property.", res);
+
     const newReview = new Review({
       reviewer: req.user._id,
       property: propertyId,
@@ -59,15 +61,20 @@ const createPropertyReview = async (req, res) => {
       comment,
     });
     const result = await newReview.save();
-    req.user.reviews.push(result._id);
+    const foundedUser = await User.findOne({
+      username: foundedProperty.owner.username,
+    }).select("group reviews");
+    foundedUser.reviews.push(result._id);
+    await foundedUser.save();
+
     await result
       .populate("reviewer", "username name email avatar -_id")
       .execPopulate();
-    await req.user.save();
+    foundedProperty.depopulate("rating.reviews");
     foundedProperty.rating.reviews.push(result._id);
-    foundedProperty.ratting.totalReviews =
-      foundedProperty.ratting.reviews.length;
 
+    foundedProperty.rating.totalReviews = foundedProperty.rating.reviews.length;
+    await foundedProperty.populate("rating.reviews").execPopulate();
     const scores = {
       cleanliness: 0,
       accuracy: 0,
@@ -106,22 +113,7 @@ const createPropertyReview = async (req, res) => {
   }
 };
 
-const getReviewDetails = async (req, res) => {
-  const { reviewId } = req.query;
-  try {
-    if (!reviewId) return generateMessage("Review id is required", res);
-    const foundedReview = await Review.findOne({
-      _id: reviewId,
-      isActive: true,
-    }).populate("reviewer", "username name email avatar");
-    if (!foundedReview) return generateMessage("Cannot find this review.", res);
-    res.send(foundedReview);
-  } catch (error) {
-    devError(error, res);
-  }
-};
-
-const updateReviewComment = async (req, res) => {
+const updateReview = async (req, res) => {
   const {
     reviewId,
     comment,
@@ -135,7 +127,7 @@ const updateReviewComment = async (req, res) => {
     if (!reviewId) return generateMessage("Review id is required", res);
     if (
       (comment && typeof comment !== "string") ||
-      isKeysTypeCorrect("number", {
+      !isKeysTypeCorrect("number", {
         cleanliness,
         accuracy,
         communication,
@@ -152,11 +144,13 @@ const updateReviewComment = async (req, res) => {
     if (req.user.username !== foundedReview.reviewer.username)
       return generateMessage("You are not authorized.", res);
 
-    foundedReview.cleanliness = cleanliness ?? foundedReview.cleanliness;
-    foundedReview.accuracy = accuracy ?? foundedReview.accuracy;
-    foundedReview.communication = communication ?? foundedReview.communication;
-    foundedReview.location = location ?? foundedReview.location;
-    foundedReview.checkIn = checkIn ?? foundedReview.checkIn;
+    foundedReview.rating.cleanliness =
+      cleanliness ?? foundedReview.rating.cleanliness;
+    foundedReview.rating.accuracy = accuracy ?? foundedReview.rating.accuracy;
+    foundedReview.rating.communication =
+      communication ?? foundedReview.rating.communication;
+    foundedReview.rating.location = location ?? foundedReview.rating.location;
+    foundedReview.rating.checkIn = checkIn ?? foundedReview.rating.checkIn;
     foundedReview.comment = comment || foundedReview.comment;
     const result = await foundedReview.save();
 
@@ -231,8 +225,7 @@ const deleteReview = async (req, res) => {
         match: { isActive: true },
         select: "rating",
       });
-    foundedProperty.ratting.totalReviews =
-      foundedProperty.ratting.reviews.length;
+    foundedProperty.rating.totalReviews = foundedProperty.rating.reviews.length;
     const scores = {
       cleanliness: 0,
       accuracy: 0,
@@ -249,19 +242,20 @@ const deleteReview = async (req, res) => {
       scores.location += review.rating.location;
       scores.checkIn += review.rating.checkIn;
     });
-
-    scores.cleanliness /= foundedProperty.rating.totalReviews;
-    scores.accuracy /= foundedProperty.rating.totalReviews;
-    scores.communication /= foundedProperty.rating.totalReviews;
-    scores.location /= foundedProperty.rating.totalReviews;
-    scores.checkIn /= foundedProperty.rating.totalReviews;
-    scores.final =
-      (scores.cleanliness +
-        scores.accuracy +
-        scores.communication +
-        scores.location +
-        scores.checkIn) /
-      5;
+    if (foundedProperty.rating.totalReviews !== 0) {
+      scores.cleanliness /= foundedProperty.rating.totalReviews;
+      scores.accuracy /= foundedProperty.rating.totalReviews;
+      scores.communication /= foundedProperty.rating.totalReviews;
+      scores.location /= foundedProperty.rating.totalReviews;
+      scores.checkIn /= foundedProperty.rating.totalReviews;
+      scores.final =
+        (scores.cleanliness +
+          scores.accuracy +
+          scores.communication +
+          scores.location +
+          scores.checkIn) /
+        5;
+    }
 
     foundedProperty.rating.scores = scores;
     await foundedProperty.save();
@@ -273,7 +267,6 @@ const deleteReview = async (req, res) => {
 
 module.exports = {
   createPropertyReview,
-  getReviewDetails,
-  updateReviewComment,
+  updateReview,
   deleteReview,
 };

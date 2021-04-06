@@ -1,5 +1,3 @@
-// đã check isActive và router tới getListPropertyPerPage
-
 const getEmptyKeys = require("../Helpers/getEmptyKeys");
 const fs = require("fs");
 const generateMessage = require("../Helpers/generateMessage");
@@ -170,7 +168,6 @@ const getPropertyInfo = async (req, res) => {
   }
 };
 
-// chia ra làm nhiều api update. Chia theo loại giống như Airbnb
 const updatePropertyFrontInfo = async (req, res) => {
   const {
     propertyId,
@@ -582,7 +579,7 @@ const updatePropertyNoticeAbout = async (req, res) => {
 };
 
 const deleteProperty = async (req, res) => {
-  const { propertyId } = req.body;
+  const { propertyId } = req.query;
   try {
     if (!propertyId) return generateMessage("Property id is required", res);
     if (typeof propertyId !== "string")
@@ -604,8 +601,8 @@ const deleteProperty = async (req, res) => {
         res
       );
     foundedProperty.isActive = false;
-    const result = await foundedProperty.save();
-    res.send(result);
+    await foundedProperty.save();
+    res.send({ message: "Deleted successfully." });
   } catch (error) {
     devError(error, res);
   }
@@ -704,7 +701,7 @@ const getListProperty = async (req, res) => {
       const isDateBetween = (date, startDate, endDate) =>
         moment(date, "DD-MM-YYYY").isBetween(
           moment(startDate, "DD-MM-YYYY"),
-          moment(endDate, "DD-MM-YYYY"),
+          endDate ? moment(endDate, "DD-MM-YYYY") : moment().add(1825, "days"),
           undefined,
           "[]"
         );
@@ -723,7 +720,9 @@ const getListProperty = async (req, res) => {
           );
           const overBookedDays =
             isDateBetween(item.startDate, fromDate, toDate) ||
-            (moment(item.startDate, "DD-MM-YYYY").isBefore(fromDate) &&
+            (moment(item.startDate, "DD-MM-YYYY").isBefore(
+              moment(fromDate, "DD-MM-YYYY")
+            ) &&
               (isDateBetween(item.endDate, fromDate, toDate) || !item.endDate));
           if (inavailFromDate || inavailToDate || overBookedDays) {
             unmatchedProperties.push(_id);
@@ -735,15 +734,14 @@ const getListProperty = async (req, res) => {
         _id: { $nin: unmatchedProperties },
         ...propertyOptQuery,
       }).select(
-        "group listOfReservation rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds"
+        "group rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds"
       );
       return res.send(filteredProperties);
     } else {
-      console.log(propertyOptQuery);
       const foundedProperty = await Property.find({
         ...propertyOptQuery,
       }).select(
-        "group listOfReservation rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds"
+        "group rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds"
       );
       return res.send(foundedProperty);
     }
@@ -796,7 +794,7 @@ const getListPropertyPerPage = async (req, res) => {
       );
 
     const propertyOptQuery = {
-      group,
+      group: group || "gp01",
       isActive: true,
       isPublished: true,
       rentalType,
@@ -852,7 +850,7 @@ const getListPropertyPerPage = async (req, res) => {
       const isDateBetween = (date, startDate, endDate) =>
         moment(date, "DD-MM-YYYY").isBetween(
           moment(startDate, "DD-MM-YYYY"),
-          moment(endDate, "DD-MM-YYYY"),
+          endDate ? moment(endDate, "DD-MM-YYYY") : moment().add(1825, "days"),
           undefined,
           "[]"
         );
@@ -871,7 +869,9 @@ const getListPropertyPerPage = async (req, res) => {
           );
           const overBookedDays =
             isDateBetween(item.startDate, fromDate, toDate) ||
-            (moment(item.startDate, "DD-MM-YYYY").isBefore(fromDate) &&
+            (moment(item.startDate, "DD-MM-YYYY").isBefore(
+              moment(fromDate, "DD-MM-YYYY")
+            ) &&
               (isDateBetween(item.endDate, fromDate, toDate) || !item.endDate));
           if (inavailFromDate || inavailToDate || overBookedDays) {
             unmatchedProperties.push(_id);
@@ -886,7 +886,7 @@ const getListPropertyPerPage = async (req, res) => {
         .skip((currentPage - 1) * pageSize)
         .limit(pageSize)
         .select(
-          "group listOfReservation rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds"
+          "group rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds"
         );
       const totalCount = await Property.find({
         ...propertyOptQuery,
@@ -909,7 +909,7 @@ const getListPropertyPerPage = async (req, res) => {
         .skip((currentPage - 1) * pageSize)
         .limit(pageSize)
         .select(
-          "group listOfReservation rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds"
+          "group rentalType address images description title pricePerDay coords rating.scores rating.totalReviews amountOfGuest roomsAndBeds"
         );
       const totalCount = await Property.find({
         ...propertyOptQuery,

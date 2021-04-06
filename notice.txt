@@ -1,21 +1,5 @@
 Nhớ gom các câu thông báo vào chung 1 file constant.
-Fix lại các status res cho đúng với các trường hợp
-Nhớ delete dòng defaultCity ở addNewCity, CityController trước khi nộp dự án
-Nhớ check lại mấy cái query, xóa comment, chỉnh lại devError trước khi nộp dự án
-Nhớ check lại các get router, nếu chuyển qua req.query được thì chuyển qua hết đi
-
-Những thứ cần lưu ý khi thêm vào:
-- search, findMethods: 
-	+ lưu ý field isActive, isPublished
-	+ regex (nếu cần)
-	+ check group require
-	+ check cityCode (nếu có)
-
-- group, role:
-	+ Check isValidGroup
-	+ Check type String
-	+ Check lowerCase, upperCase
-	+ Check bị trùng ID (nếu cần)
-	+ Check rỗng (nếu cần)
-	+ Handle Error Schema (Nếu có)
-- 
+Fix lại các status res cho đúng với các trường hợp.
+Chuyển mọi message thành tiếng Anh hết.
+Thêm database, hình và tìm cách import ra file riêng
+Hỏi tìm hiểu swagger, hỏi anh Khải xem host ở đâu
