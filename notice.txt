@@ -1,2 +1,2 @@
-Thêm database, hình và export ra file riêng. Gửi anh Khải xem demo
+Thêm database, hình và export ra file riêng. Gửi anh Khải xem demo, share postman link luôn
 Vẽ lại database table, push lên heroku luôn
