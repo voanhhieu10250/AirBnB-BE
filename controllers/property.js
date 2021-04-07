@@ -70,10 +70,23 @@ const createRentalProperty = async (req, res) => {
     if (emptyKeys.length > 0)
       return generateMessage(`${emptyKeys[0]} is required`, res);
     if (
-      isKeysTypeCorrect("object", req.body) ||
-      isKeysTypeCorrect("array", req.body) ||
+      !isKeysTypeCorrect("string", {
+        address,
+        districtCode,
+        rentalType,
+        title,
+        description,
+      }) ||
       !isKeysTypeCorrect("boolean", isPublished) ||
-      !isKeysTypeCorrect("number", { longitude, latitude })
+      !isKeysTypeCorrect("number", {
+        longitude,
+        latitude,
+        beds,
+        bedrooms,
+        bathrooms,
+        pricePerDay,
+        amountOfGuest,
+      })
     )
       return generateMessage("Invalid key type", res, 406);
     if (group && !isValidGroup(group))

@@ -138,6 +138,21 @@ const getDistrictDetailsPerPage = async (req, res) => {
   }
 };
 
+const getListDistrict = async (req, res) => {
+  const { cityCode } = req.query;
+  try {
+    if (!cityCode) return generateMessage("City code is required", res);
+    const foundedDistricts = await City.findOne({ code: cityCode })
+      .select("name code listOfDistricts")
+      .populate("listOfDistricts", "code name defaultDistrict -_id");
+    if (!foundedDistricts)
+      return generateMessage("Cannot find this city", res, 404);
+    res.send(foundedDistricts);
+  } catch (error) {
+    devError(error, res);
+  }
+};
+
 const updateDistrictInfo = async (req, res) => {
   const { districtCode, name, defaultDistrict } = req.body;
   try {
@@ -209,4 +224,5 @@ module.exports = {
   getDistrictDetailsPerPage,
   updateDistrictInfo,
   deleteDistrict,
+  getListDistrict,
 };

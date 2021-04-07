@@ -1,2 +1,5 @@
 Thêm database, hình và export ra file riêng. Gửi anh Khải xem demo, share postman link luôn
 Vẽ lại database table, push lên heroku luôn
+Thêm database cho 1 group xong rồi export ra file JSON rồi thêm database cho các group khác
+
+Nhớ bỏ defaultDistrict

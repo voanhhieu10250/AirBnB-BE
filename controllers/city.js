@@ -234,10 +234,31 @@ const deleteCityInfo = async (req, res) => {
   }
 };
 
+const getListCityCode = async (req, res) => {
+  const { cityName, cityCode } = req.query;
+  try {
+    console.log(cityName, cityCode);
+    const queryOpt = {
+      isActive: true,
+      name: { $regex: vietnameseRegexStr(cityName) },
+      code: cityCode,
+    };
+    if (!cityName) delete queryOpt.name;
+    if (!cityCode) delete queryOpt.code;
+    const foundedCities = await City.find(queryOpt).select(
+      "code name defaultCity"
+    );
+    res.send(foundedCities);
+  } catch (error) {
+    devError(error, res);
+  }
+};
+
 module.exports = {
   addNewCity,
   getCityDetails,
   getListCity,
   updateCityInfo,
   deleteCityInfo,
+  getListCityCode,
 };

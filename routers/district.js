@@ -6,6 +6,7 @@ const {
   getDistrictDetailsPerPage,
   updateDistrictInfo,
   deleteDistrict,
+  getListDistrict,
 } = require("../controllers/district");
 const router = express.Router();
 
@@ -17,6 +18,8 @@ router.get(
   "/QuanLyQuanHuyen/LayThongTinQuanHuyenPhanTrang",
   getDistrictDetailsPerPage
 );
+
+router.get("/QuanLyQuanHuyen/LayDanhSachQuanHuyen", getListDistrict);
 
 router.put(
   "/QuanLyQuanHuyen/ThayDoiThongTinQuanHuyen",

@@ -5,6 +5,7 @@ const {
   getListCity,
   updateCityInfo,
   deleteCityInfo,
+  getListCityCode,
 } = require("../controllers/city");
 const { auth } = require("../middleware/auth");
 
@@ -15,6 +16,8 @@ router.post("/QuayLyThanhPho/ThemThanhPho", auth(["Admin"]), addNewCity);
 router.get("/QuanLyThanhPho/LayThongTinThanhPho", getCityDetails);
 
 router.get("/QuanLyThanhPho/LayDanhSachThanhPho", getListCity);
+
+router.get("/QuanLyThanhPho/LayDanhSachCodeThanhPho", getListCityCode);
 
 router.put(
   "/QuanLyThanhPho/ThayDoiThongTinThanhPho",
