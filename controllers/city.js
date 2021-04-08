@@ -237,7 +237,6 @@ const deleteCityInfo = async (req, res) => {
 const getListCityCode = async (req, res) => {
   const { cityName, cityCode } = req.query;
   try {
-    console.log(cityName, cityCode);
     const queryOpt = {
       isActive: true,
       name: { $regex: vietnameseRegexStr(cityName) },
