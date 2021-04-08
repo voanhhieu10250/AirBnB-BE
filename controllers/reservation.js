@@ -127,7 +127,7 @@ const reservationDetails = async (req, res) => {
       .populate({
         path: "property",
         select: "owner",
-        populate: { path: "owner", select: "username name email -_id" },
+        populate: { path: "owner", select: "username name avatar -_id" },
       });
     if (!result)
       return generateMessage("This reservation does not exist", res, 404);

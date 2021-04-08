@@ -160,13 +160,13 @@ const getPropertyInfo = async (req, res) => {
         path: "listOfReservation",
         match: { isActive: true },
         select: "-isActive -property",
-        populate: { path: "booker", select: "username email name -_id" },
+        populate: { path: "booker", select: "username avatar name -_id" },
       })
       .populate({
         path: "rating.reviews",
         match: { isActive: true },
         select: "-isActive",
-        populate: { path: "reviewer", select: "username email name -_id" },
+        populate: { path: "reviewer", select: "username name avatar -_id" },
       })
       .populate({
         path: "owner",
@@ -637,7 +637,7 @@ const deleteProperty = async (req, res) => {
 };
 
 const getListProperty = async (req, res) => {
-  // city and district are required
+  // city are required
   const {
     cityName,
     group = "gp01",
@@ -648,8 +648,7 @@ const getListProperty = async (req, res) => {
     toDate,
   } = req.query;
   try {
-    if (!cityName || !districtName)
-      return generateMessage("City name and district name are required", res);
+    if (!cityName) return generateMessage("City name are required", res);
     if (
       !isKeysTypeCorrect("string", {
         district: districtName,
@@ -691,11 +690,13 @@ const getListProperty = async (req, res) => {
     if (!foundedCity)
       return generateMessage("Cannot find the city you provided", res, 404);
 
-    const foundedDistrict = await District.findOne({
+    const districtOptQuery = {
       isActive: true,
       cityCode: foundedCity.code,
       name: { $regex: vietnameseRegexStr(districtName) },
-    })
+    };
+    if (!districtName) delete districtOptQuery.name;
+    const foundedDistrict = await District.findOne(districtOptQuery)
       .select("name code listOfProperties")
       .populate({
         path: "listOfProperties",
@@ -784,7 +785,7 @@ const getListProperty = async (req, res) => {
 };
 
 const getListPropertyPerPage = async (req, res) => {
-  // city and district are required
+  // city are required
   const {
     cityName,
     group = "gp01",
@@ -797,8 +798,7 @@ const getListPropertyPerPage = async (req, res) => {
     pageSize = 2,
   } = req.query;
   try {
-    if (!cityName || !districtName)
-      return generateMessage("City name and district name are required", res);
+    if (!cityName) return generateMessage("City name are required", res);
     if (
       !isKeysTypeCorrect("string", {
         district: districtName,
@@ -841,11 +841,13 @@ const getListPropertyPerPage = async (req, res) => {
     if (!foundedCity)
       return generateMessage("Cannot find the city you provided", res, 404);
 
-    const foundedDistrict = await District.findOne({
+    const districtOptQuery = {
       isActive: true,
       cityCode: foundedCity.code,
       name: { $regex: vietnameseRegexStr(districtName) },
-    })
+    };
+    if (!districtName) delete districtOptQuery.name;
+    const foundedDistrict = await District.findOne(districtOptQuery)
       .select("name code listOfProperties")
       .populate({
         path: "listOfProperties",

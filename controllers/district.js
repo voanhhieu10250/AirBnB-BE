@@ -69,7 +69,11 @@ const getDistrictDetails = async (req, res) => {
       isActive: true,
     }).populate({
       path: "listOfProperties",
-      match: { isActive: true, isPublished: true, group },
+      match: {
+        isActive: true,
+        isPublished: true,
+        group: group ? group : "gp01",
+      },
       options: {
         sort: { "rating.totalReviews": "desc", "rating.scores.final": "desc" },
       },
@@ -105,7 +109,11 @@ const getDistrictDetailsPerPage = async (req, res) => {
       isActive: true,
     }).populate({
       path: "listOfProperties",
-      match: { isActive: true, isPublished: true, group },
+      match: {
+        isActive: true,
+        isPublished: true,
+        group: group ? group : "gp01",
+      },
       options: {
         sort: {
           "rating.totalReviews": "desc",
