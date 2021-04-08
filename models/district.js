@@ -23,7 +23,7 @@ const districtSchema = new mongoose.Schema({
   ],
   defaultDistrict: {
     type: Boolean,
-    default: true,
+    default: false,
   },
   isActive: {
     type: Boolean,
